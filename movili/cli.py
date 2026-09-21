@@ -358,11 +358,18 @@ def cmd_jarvis(args: argparse.Namespace) -> int:
         for nome, info in diag_voz().items():
             marca = "OK       " if info["disponivel"] else "ausente  "
             print(f"  [{marca}] {nome:<20} motor: {info['motor']}")
+        from .jarvis.despertar import DespertarOpenWakeWord
+
+        oww = DespertarOpenWakeWord()
+        marca = "OK       " if oww.disponivel else "ausente  "
+        print(f"  [{marca}] despertar            motor: {oww.nome}")
         print(
             "\nInstalar o que falta:\n"
             "  TTS  ->  pip install piper-tts && python -m piper.download_voices pt_BR-faber-medium\n"
             "           (ou apt install espeak-ng, que ja serve como alternativa)\n"
             "  STT  ->  pip install faster-whisper sounddevice numpy\n"
+            "  Palavra de despertar -> pip install openwakeword\n"
+            "           (sem ela, a deteccao usa o proprio STT em janelas curtas)\n"
             "\nSem nenhum deles o Jarvis roda em modo texto, digitando e lendo na tela."
         )
         return 0
@@ -375,6 +382,9 @@ def cmd_jarvis(args: argparse.Namespace) -> int:
         frases=args.frases,
         segundos_escuta=args.segundos,
         porta_voz=args.porta_voz,
+        palavra_despertar=args.palavra,
+        despertar=args.despertar,
+        janela_conversa=args.janela,
     )
     try:
         return sessao.rodar()
@@ -507,6 +517,7 @@ def construir_parser() -> argparse.ArgumentParser:
               movili chat
               movili jarvis --diagnostico
               movili jarvis                  # conversa por voz
+              movili jarvis --palavra         # em espera, acorda ao ouvir "jarvis"
               movili rotinas                 # calendario interno da empresa
               movili rotinas rodar --rotina daily
               movili painel                  # acompanhe a empresa ao vivo no navegador
@@ -592,6 +603,13 @@ def construir_parser() -> argparse.ArgumentParser:
     s.add_argument("--segundos", type=int, default=8, help="duracao de cada escuta")
     s.add_argument("--porta-voz", dest="porta_voz", default="diretor",
                    help="quem responde quando a pergunta e aberta")
+    s.add_argument("--palavra", nargs="?", const="jarvis", default=None,
+                   help="liga a palavra de despertar (padrao: jarvis)")
+    s.add_argument("--despertar", default="auto",
+                   choices=["auto", "openwakeword", "transcricao", "tecla"],
+                   help="motor de deteccao da palavra")
+    s.add_argument("--janela", type=float, default=25.0,
+                   help="segundos que ele segue ouvindo depois de responder")
     s.add_argument("--diagnostico", action="store_true",
                    help="so mostra quais motores de voz estao instalados")
     s.set_defaults(func=cmd_jarvis)

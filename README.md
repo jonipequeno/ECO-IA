@@ -298,6 +298,27 @@ você>   convoca uma reunião sobre entrar no mercado de saúde
 jarvis> [roda a reunião e resume a ata em voz]
 ```
 
+### Palavra de despertar
+
+Por padrão o Jarvis escuta quando você manda. Com `--palavra` ele fica em espera e acorda
+ao ouvir o próprio nome:
+
+```bash
+movili jarvis --palavra                    # acorda com "jarvis"
+movili jarvis --palavra movili             # outra palavra
+movili jarvis --palavra --janela 40        # segue ouvindo 40s depois de responder
+```
+
+Depois de responder, ele continua ouvindo por uma janela (25s por padrão) — numa conversa
+você não repete o nome a cada frase. Passado o silêncio, volta a dormir.
+
+Pode dizer o comando junto: *"Jarvis, chama a Patrícia"* é reconhecido e executado de uma vez.
+
+**O casamento é tolerante de propósito.** Transcrição de áudio curto erra muito, então
+`jarves`, `darvis`, `javis` e `jarviz` acordam. O limiar de 0.80 foi escolhido por medição,
+não por palpite: fica entre `jardins` (0.769, que a 0.75 acordava o Jarvis sozinho) e a pior
+confusão que vale manter (0.833). Acordar sozinho incomoda mais do que perder uma chamada.
+
 **Motores de voz** — todos opcionais e detectados em tempo de execução. Sem nenhum
 deles, o Jarvis funciona em modo texto:
 
@@ -305,10 +326,12 @@ deles, o Jarvis funciona em modo texto:
 |---|---|---|---|
 | Fala (TTS) | `piper` (voz neural pt-BR) | `say` / `espeak-ng` | imprime na tela |
 | Escuta (STT) | `faster-whisper` | `whisper.cpp` | teclado |
+| Despertar | `openwakeword` | o próprio STT em janelas curtas | Enter |
 
 ```bash
 pip install -r requirements-voz.txt
 python -m piper.download_voices pt_BR-faber-medium
+pip install openwakeword        # opcional: despertar barato em CPU
 ```
 
 ### Ponte OpenAI-compatível
@@ -454,7 +477,7 @@ movili memoria limpar [--projeto X]
 
 movili rotinas [listar|proximas|rodar|agenda]     # calendário interno
 movili painel [--porta 8080]                     # painel web ao vivo
-movili jarvis [--diagnostico]                    # conversa por voz
+movili jarvis [--diagnostico] [--palavra]        # conversa por voz
 movili ponte [--porta 8123]                      # API OpenAI-compatível
 movili api [--porta 8000]                        # API REST (requer FastAPI)
 ```
@@ -571,7 +594,7 @@ Para GPU NVIDIA, descomente o bloco `deploy.resources` no `docker-compose.yml`.
 make teste        # ou: python -m pytest tests -q
 ```
 
-180 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
+225 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
 Cobrem estrutura do quadro, consistência dos fluxos (inclusive se uma etapa depende
 de alguém que ainda não atuou), roteamento de modelos, barramento, memória, sandbox
 das ferramentas, fallback entre backends, a memória semântica (fatiamento, cosseno

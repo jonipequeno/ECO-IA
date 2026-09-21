@@ -20,9 +20,14 @@ commit. `Barramento`, não `Bus`. `executar_fluxo`, não `run_flow`. `remetente`
 | `.md` e o HTML do painel | **sempre** | README, `docs/`, texto renderizado ao usuário |
 
 Ou seja: `memoria`, `execucao`, `duracao_s`, e também `"Responda SEMPRE em portugues do
-Brasil"` dentro de um prompt e `print("Relatorio: ...")` numa saída. Medido: 0% de linhas
-acentuadas em todos os `.py` e `.yaml`; 35–43% no README e em `docs/`. Misturar as duas
-formas quebra busca e consistência.
+Brasil"` dentro de um prompt e `print("Relatorio: ...")` numa saída. Medido sobre a árvore
+inteira: zero linhas acentuadas em `.py` e `.yaml`; 35–43% no README e em `docs/`. Misturar
+as duas formas quebra busca e consistência.
+
+**Única exceção**: regex que casa fala do usuário precisa das letras acentuadas — veja
+`PADRAO_CHAMADA` em `movili/jarvis/conversa.py`, que reconhece "chama a **Patrícia**". Isso
+é dado de entrada, não texto do projeto. Traço longo (`—`) em saída ao usuário é estilo, não
+acento, e já é usado no código.
 
 Inglês só onde o protocolo externo exige: `role`/`content` do formato de chat,
 `do_GET`/`do_POST` da `http.server`, `model`/`messages`/`choices` da API compatível com

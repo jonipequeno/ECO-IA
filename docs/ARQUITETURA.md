@@ -161,9 +161,26 @@ Motores detectados em tempo de execução, com degradação em cascata:
 |---|---|---|---|
 | TTS | `piper` | `say` / `espeak-ng` | imprime na tela |
 | STT | `faster-whisper` | `whisper.cpp` | teclado |
+| Despertar | `openwakeword` | o próprio STT em janelas curtas | Enter |
 
 Nenhum é obrigatório. Falha de um motor no meio da execução cai para texto em vez de
 derrubar a sessão.
+
+### `despertar.py`
+A palavra de despertar. O detector por transcrição não exige dependência nova — se o Jarvis
+já transcreve, já sabe despertar; em troca gasta CPU transcrevendo silêncio, por isso a
+janela é curta. O `openwakeword`, quando instalado, é ordens de grandeza mais barato.
+
+A parte interessante é o **casamento tolerante**. Exigir igualdade exata faria o usuário
+repetir o nome várias vezes, porque transcrição de áudio curto erra muito. A comparação é
+termo a termo (numa frase longa a semelhança global se dilui e a palavra passaria
+despercebida) com `difflib.SequenceMatcher`.
+
+O limiar de 0.80 saiu de medição, não de palpite: com as confusões plausíveis do Whisper
+para "jarvis" em pt-BR contra palavras comuns do idioma, a folga fica entre 0.769
+(`jardins`, o melhor falso positivo) e 0.833 (a pior confusão que vale manter). A 0.75 —
+o valor que escrevi primeiro — `jardins` acordava o Jarvis sozinho. O corte pende para o
+conservador porque acordar sem ser chamado incomoda mais do que perder uma chamada.
 
 ### `ponte.py`
 Servidor HTTP em `http.server` da biblioteca padrão que fala o protocolo

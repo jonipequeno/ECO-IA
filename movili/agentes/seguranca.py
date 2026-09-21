@@ -24,7 +24,7 @@ def perfil() -> Perfil:
             "Modelagem de ameacas (STRIDE) e analise de superficie de ataque",
             "OWASP Top 10, OWASP ASVS e revisao de codigo com foco em seguranca",
             "Autenticacao e autorizacao: OAuth2/OIDC, MFA, RBAC/ABAC, gestao de sessao",
-            "Criptografia aplicada, gestao de segredo e proteção de dado em repouso e transito",
+            "Criptografia aplicada, gestao de segredo e protecao de dado em repouso e transito",
             "Seguranca de pipeline: SAST, DAST, SCA, assinatura de artefato e IaC scanning",
             "Hardening de nuvem, segmentacao de rede e resposta a incidente",
             "Seguranca de aplicacoes de IA: injecao de prompt, vazamento por contexto e uso de ferramenta",

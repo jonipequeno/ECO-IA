@@ -9,12 +9,14 @@ description = "Ecossistema de agentes de IA da Movili Tecnologia, rodando 100% l
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
-keywords = ["agentes", "ia", "ollama", "lm-studio", "qwen3", "multiagente", "openjarvis"]
+keywords = ["agentes", "ia", "ollama", "lm-studio", "qwen3", "multiagente", "openjarvis",
+            "wake-word", "voz"]
 dependencies = ["PyYAML>=6.0"]
 
 [project.optional-dependencies]
 api = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "pydantic>=2.6"]
-voz = ["piper-tts>=1.2", "faster-whisper>=1.0", "sounddevice>=0.4", "numpy>=1.24"]
+voz = ["piper-tts>=1.2", "faster-whisper>=1.0", "sounddevice>=0.4", "numpy>=1.24",
+       "openwakeword>=0.6"]
 dev = ["pytest>=8.0"]
 
 [project.scripts]

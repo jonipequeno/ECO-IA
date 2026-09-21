@@ -8,3 +8,7 @@ piper-tts>=1.2
 faster-whisper>=1.0
 sounddevice>=0.4
 numpy>=1.24
+
+# Palavra de despertar dedicada (opcional). Sem ela, a deteccao reaproveita o
+# proprio STT em janelas curtas - funciona, mas gasta mais CPU.
+openwakeword>=0.6

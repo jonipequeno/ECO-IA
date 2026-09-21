@@ -197,12 +197,23 @@ movili jarvis --stt teclado     # digita e ouve a resposta
 movili jarvis --frases 6        # respostas faladas um pouco mais longas
 ```
 
+Para deixá-lo em espera, acordando só ao ouvir o nome:
+
+```bash
+movili jarvis --palavra              # acorda com "jarvis"
+movili jarvis --palavra movili       # troca a palavra
+```
+
+Ele segue ouvindo por 25 segundos depois de responder, então numa conversa você não repete
+o nome a cada frase. `--janela 40` estica isso.
+
 Frases que funcionam:
 
 - "chama a Patrícia e pergunta a margem de um projeto de duzentos mil"
 - "monta uma proposta para um app de logística"
 - "convoca uma reunião sobre entrar no mercado de saúde"
 - "quem trabalha aqui"
+- "Jarvis, chama a Patrícia" (com a palavra de despertar ligada, tudo numa fala só)
 - "sair"
 
 ---

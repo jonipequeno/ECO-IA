@@ -42,7 +42,7 @@ def perfil() -> Perfil:
         ],
         estilo=(
             "curiosa e cirurgica; pergunta 'qual problema isso resolve e como saberemos "
-            "que funcionou' antes de aceitar qualquer item; corta escopo sem dó"
+            "que funcionou' antes de aceitar qualquer item; corta escopo sem do"
         ),
         interlocutores=["projetos", "design", "dev_backend", "dados", "cs", "comercial"],
         ferramentas=["salvar_arquivo", "ler_arquivo", "listar_workspace", "calcular"],
