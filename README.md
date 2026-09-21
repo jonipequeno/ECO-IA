@@ -625,6 +625,18 @@ python scripts/verificar.py    # diagnóstico do ambiente e modelos faltando
 
 ---
 
+## Documentação
+
+| Arquivo | Conteúdo |
+|---|---|
+| [docs/USO.md](docs/USO.md) | guia de uso, do primeiro dia aos problemas comuns |
+| [docs/AGENTES.md](docs/AGENTES.md) | as 20 fichas funcionais em detalhe |
+| [docs/MODELOS.md](docs/MODELOS.md) | qual modelo aberto usar para cada função, e por quê |
+| [docs/ARQUITETURA.md](docs/ARQUITETURA.md) | cada camada e o porquê de cada escolha |
+| [docs/PROMPT-INTERFACE.md](docs/PROMPT-INTERFACE.md) | prompt para desenhar a interface como uma rede neural |
+
+---
+
 ## Licença
 
 MIT — veja [LICENSE](LICENSE).
