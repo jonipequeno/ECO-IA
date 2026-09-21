@@ -1,16 +1,25 @@
 # Prompt para a interface em forma de rede neural
 
-Prompt pronto para colar em ferramenta de geração de interface (v0, Lovable, Claude,
-Cursor) ou entregar a um designer. Está fundamentado na topologia real do projeto — os
-números, nomes e tipos abaixo saem de `movili/agentes/` e `movili/core/mensagem.py`, não
-são inventados.
+Prompt completo, com os dados da topologia já embutidos — copie de uma vez e cole em
+ferramenta de geração de interface (v0, Lovable, Claude, Cursor) ou entregue a um
+designer.
 
-Depois do prompt há uma seção com as variações (imagem estática, Figma) e os dados
-completos para colar junto.
+Todos os números vêm de `movili/agentes/` e `movili/core/mensagem.py`, extraídos por
+script. Regenere com:
+
+```bash
+python -c "
+import sys; sys.path.insert(0,'.')
+from movili import agentes as q
+p = q.todos_os_perfis()
+d = [(i,a) for i,x in p.items() for a in x.interlocutores if a != '*']
+e = {tuple(sorted(t)) for t in d}
+print(len(p),'agentes |',len(d),'declaracoes |',len(e),'arestas')"
+```
 
 ---
 
-## O prompt
+## O prompt (copie daqui até o fim da seção)
 
 > Projete a interface de um painel que mostra uma empresa de software operada por 20
 > agentes de IA trabalhando juntos, em tempo real.
@@ -41,18 +50,111 @@ completos para colar junto.
 > 7. **Atrofia.** Sinapse que passa muito tempo sem uso afina até quase sumir, sem nunca
 >    desaparecer de todo.
 >
+> ### A rede: 20 neurônios em 12 regiões
+>
+> O número depois do nome é o **grau** — quantas sinapses o nó tem. Use isso como o
+> tamanho do nó. A rede é assimétrica de propósito: `comercial` tem 11 sinapses e
+> `prospeccao` tem 4, e essa diferença precisa saltar aos olhos.
+>
+> ```
+> REGIÃO              NEURÔNIO           PAPEL                                  GRAU
+> socios              socio_estrategia   Helena Vasconcelos — CSO                  5
+>                     socio_tecnologia   Gustavo Ribeiro — CTO                     6
+> diretoria           diretor            Ricardo Menezes — CEO                     9
+> produto             produto            Juliana Prado — Product Manager           9
+>                     projetos           Vinicius Rocha — Gerente de Projetos      7
+>                     design             Felipe Moraes — UX/UI                     4
+> engenharia          dev_backend        Rafael Andrade — Arquiteto/Backend       10
+>                     dev_frontend       Camila Reis — Frontend                    6
+>                     dev_mobile         Bruno Tavares — Mobile/DevOps/QA          7
+> dados               dados              Aline Ferraz — BI                         8
+> marketing           marketing          Larissa Monteiro — Head                   9
+>                     seo                Diego Barros — SEO                        4
+>                     copy               Marina Duarte — Copywriter                4
+> comercial           prospeccao         Thiago Nunes — SDR                        4
+>                     comercial          Eduardo Lima — Closer                    11
+> financeiro          financeiro         Patricia Souza — Controller               9
+> juridico            juridico           Roberto Aguiar — Contratos/LGPD           6
+> seguranca           seguranca          Daniel Okamoto — CISO/AppSec              6
+> pessoas             rh                 Sofia Nogueira — People                   5
+> sucesso_do_cliente  cs                 Marcelo Brito — Customer Success          5
+> ```
+>
+> ### As 67 sinapses
+>
+> Desenhe exatamente estas ligações. São 67 arestas entre 20 nós — 35% das ligações
+> possíveis, então a rede é densa no centro e esgarçada na borda.
+>
+> ```
+> comercial-copy          comercial-cs            comercial-dados
+> comercial-dev_backend   comercial-financeiro    comercial-juridico
+> comercial-marketing     comercial-produto       comercial-projetos
+> comercial-prospeccao    comercial-socio_estrategia
+> copy-marketing          copy-prospeccao         copy-seo
+> cs-dados                cs-dev_mobile           cs-diretor
+> cs-produto
+> dados-financeiro        dados-juridico          dados-marketing
+> dados-produto           dados-seguranca         dados-seo
+> design-dev_frontend     design-dev_mobile       design-marketing
+> design-produto
+> dev_backend-dev_frontend    dev_backend-dev_mobile      dev_backend-diretor
+> dev_backend-financeiro      dev_backend-produto         dev_backend-projetos
+> dev_backend-rh              dev_backend-seguranca       dev_backend-socio_tecnologia
+> dev_frontend-dev_mobile     dev_frontend-marketing      dev_frontend-projetos
+> dev_frontend-seo
+> dev_mobile-diretor      dev_mobile-projetos     dev_mobile-seguranca
+> diretor-financeiro      diretor-juridico        diretor-projetos
+> diretor-rh              diretor-socio_estrategia    diretor-socio_tecnologia
+> financeiro-juridico     financeiro-marketing    financeiro-rh
+> financeiro-socio_estrategia financeiro-socio_tecnologia
+> juridico-prospeccao     juridico-seguranca
+> marketing-prospeccao    marketing-seo           marketing-socio_estrategia
+> produto-projetos        produto-rh              produto-seguranca
+> produto-socio_tecnologia
+> projetos-rh
+> seguranca-socio_tecnologia
+> socio_estrategia-socio_tecnologia
+> ```
+>
+> Duas características da topologia que a visualização precisa preservar:
+>
+> - **19 dessas ligações são recíprocas** — os dois lados se declararam mutuamente. São
+>   as conexões mais fortes da casa (`comercial↔financeiro`, `dev_backend↔dev_frontend`,
+>   `marketing↔seo`, `socio_estrategia↔socio_tecnologia`). Desenhe-as visivelmente mais
+>   espessas desde o estado de repouso.
+> - **O CEO (`diretor`) é o único que se declara conectado a todos.** As 9 sinapses
+>   listadas acima são só as que os outros declararam com ele. Trate-o como um nó capaz
+>   de alcançar qualquer região — talvez com sinapses latentes, quase invisíveis, que só
+>   acendem quando usadas.
+>
 > ### Layout
 >
-> Grafo de força dirigida, agrupado por setor. Os setores são **regiões de gravidade**,
-> não caixas com borda: os nós de um mesmo setor se atraem e formam um agrupamento
+> Grafo de força dirigida, agrupado por região. As regiões são **campos de gravidade**,
+> não caixas com borda: os nós de uma mesma região se atraem e formam um agrupamento
 > orgânico, com limites difusos. Nada de retângulos aninhados.
->
-> O tamanho do nó vem do grau (quantas sinapses ele tem). A rede é assimétrica de
-> propósito — há concentradores óbvios e há periferia.
 >
 > A área da rede ocupa o corpo da tela. Em volta, o mínimo: um cabeçalho fino com o
 > estado do sistema, e um painel lateral que só aparece quando algo é selecionado. Nada
 > de cercar o grafo com cartões.
+>
+> ### O que trafega pelas sinapses
+>
+> Nove tipos de mensagem, e o matiz do pulso vem do tipo:
+>
+> ```
+> briefing    demanda entrando na empresa
+> tarefa      atribuição direta a um agente
+> entrega     resultado de uma tarefa
+> pergunta    um agente pedindo informação a outro
+> resposta    retorno de uma pergunta
+> revisao     crítica ou aprovação de uma entrega
+> decisao     deliberação da liderança
+> alerta      risco, bloqueio ou erro
+> informe     comunicado geral (dispara para toda a rede de uma vez)
+> ```
+>
+> Quatro prioridades — `baixa`, `normal`, `alta`, `critica` — que modulam a intensidade
+> e a velocidade do pulso.
 >
 > ### Cor e movimento
 >
@@ -61,11 +163,11 @@ completos para colar junto.
 >
 > - intensidade da luz = intensidade da ativação
 > - espessura e brilho da sinapse = peso aprendido
-> - matiz = natureza do que trafega (tarefa, entrega, pergunta, decisão, alerta)
+> - matiz = tipo da mensagem que está passando
 >
-> Sugestão de base, para manter coerência com o produto: fundo `#0e1117`, superfície
-> `#161b22`, borda `#2a3441`, texto `#e6edf3`, acento `#4f9cf9`, sucesso `#3fb950`,
-> atenção `#d29922`, erro `#f85149`.
+> Paleta do produto, para manter coerência: fundo `#0e1117`, superfície `#161b22`,
+> borda `#2a3441`, texto `#e6edf3`, acento `#4f9cf9`, sucesso `#3fb950`, atenção
+> `#d29922`, erro `#f85149`.
 >
 > O movimento é contínuo e lento no repouso, rápido e direcional na propagação. Nada de
 > animação que compete com a leitura. Respeite `prefers-reduced-motion`: sem movimento,
@@ -82,7 +184,7 @@ completos para colar junto.
 >
 > ### Restrições técnicas
 >
-> - 60 fps com 20 nós e 86 arestas animando ao mesmo tempo.
+> - 60 fps com 20 nós e 67 arestas animando ao mesmo tempo.
 > - SVG ou Canvas, sem biblioteca pesada de grafo.
 > - Funciona a partir de 360px de largura: no celular, a rede continua sendo a tela
 >   principal, com o painel lateral virando folha inferior.
@@ -95,77 +197,44 @@ completos para colar junto.
 > - Iconografia batida de "IA": cérebro azul brilhante, placa de circuito, chuva de
 >   código verde, hexágonos.
 > - Grafo bonito e estático. Se não pulsa, propaga e engrossa, não cumpriu o pedido.
-> - Nós todos iguais. A assimetria é o dado.
+> - Nós todos iguais. A assimetria é o dado — respeite os graus da tabela.
 > - Texto sobre o grafo. Rótulo aparece na interação, não permanentemente.
-
----
-
-## Os dados reais, para colar junto
-
-Cole isto no fim do prompt para a interface sair com a topologia verdadeira:
-
-```
-20 agentes em 12 setores:
-
-socios              Helena Vasconcelos (CSO), Gustavo Ribeiro (CTO)
-diretoria           Ricardo Menezes (CEO)
-produto             Juliana Prado (PM), Vinicius Rocha (PMO), Felipe Moraes (UX/UI)
-engenharia          Rafael Andrade (arquiteto/backend), Camila Reis (frontend),
-                    Bruno Tavares (mobile/DevOps/QA)
-dados               Aline Ferraz (BI)
-marketing           Larissa Monteiro (head), Diego Barros (SEO), Marina Duarte (copy)
-comercial           Thiago Nunes (SDR), Eduardo Lima (closer)
-financeiro          Patricia Souza (controller)
-juridico            Roberto Aguiar (contratos/LGPD)
-seguranca           Daniel Okamoto (CISO/AppSec)
-pessoas             Sofia Nogueira (People)
-sucesso do cliente  Marcelo Brito (CS)
-
-86 conexões declaradas, 22,6% das ligações possíveis.
-
-Grau de cada nó (tamanho visual):
-  comercial 15 · marketing 13 · dev_backend 13 · produto 13 · financeiro 12
-  diretor 9 · ... · rh 5 (o menor)
-
-Tipos de mensagem que trafegam pelas sinapses (matiz):
-  briefing · tarefa · entrega · pergunta · resposta · revisao · decisao · alerta · informe
-
-Prioridades (intensidade): baixa · normal · alta · critica
-```
 
 ---
 
 ## Variações
 
-**Para gerador de imagem** (Midjourney, Ideogram): corte as seções de interação e
-restrições técnicas, e acrescente no fim:
+**Para gerador de imagem** (Midjourney, Ideogram): corte as seções de interação,
+restrições técnicas e a lista de arestas — gerador de imagem não segue topologia
+explícita. Mantenha os sete estados e acrescente:
 
 > Visualização de tela única, vista de cima, fundo escuro quase preto. Rede orgânica
 > assimétrica de 20 nós luminosos agrupados em regiões difusas, ligados por filamentos
 > de espessura desigual. Alguns nós intensamente acesos com halo, outros apagados.
-> Rastros de luz correndo por alguns filamentos. Estética de instrumento científico, não
-> de ficção científica. Sem texto, sem ícones, sem cérebro.
+> Rastros de luz correndo por alguns filamentos. Um nó claramente mais conectado que os
+> outros, e alguns na periferia com uma ou duas ligações. Estética de instrumento
+> científico, não de ficção científica. Sem texto, sem ícones, sem cérebro.
 
 **Para Figma / design estático**: peça três quadros em vez de um — repouso, meio da
 propagação e depois do reforço — lado a lado. A diferença entre o primeiro e o terceiro
 quadro é o que prova que a ideia funciona.
 
-**Para gerador de código**: acrescente o stack desejado e peça arquivo único sem build,
-se quiser espelhar o painel atual (`movili/painel/web/index.html`, HTML + CSS + JS puro,
-sem dependência).
+**Para gerador de código**: acrescente o stack desejado. Se quiser espelhar o painel
+atual (`movili/painel/web/index.html`), peça arquivo único em HTML + CSS + JS puro, sem
+build e sem dependência.
 
 ---
 
 ## Por que o prompt é assim
 
-Três decisões que fazem diferença no resultado:
-
 **Estados antes de estética.** Ferramenta de geração entrega grafo bonito e morto se você
 pedir "interface de rede neural". Descrever os sete estados força o movimento a carregar
 informação.
 
-**Dados reais no prompt.** Com os nomes, setores e graus verdadeiros, a saída já nasce
-com a assimetria certa. Sem eles, vem um grafo simétrico de nós genéricos.
+**Topologia explícita, não adjetivo.** "Rede assimétrica" produz um grafo simétrico de
+nós genéricos. A tabela de graus e a lista das 67 arestas produzem a rede real — com
+`comercial` e `dev_backend` como concentradores e `copy`, `seo`, `design` e `prospeccao`
+na borda.
 
 **Lista do que evitar.** Metade do trabalho de um prompt visual é fechar as portas
 óbvias. "Cérebro azul brilhante" e "organograma com o chefe no topo" são exatamente para
