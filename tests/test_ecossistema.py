@@ -40,6 +40,27 @@ def test_entregavel_fica_na_memoria_corporativa(eco_pequeno):
     assert any(i["agente"] == "copy" for i in itens)
 
 
+def test_fila_de_pendentes_do_agente_tem_teto(eco_pequeno):
+    """Sem teto, um agente guardaria toda mensagem da sessao - o painel roda por horas."""
+    financeiro = eco_pequeno.agente("financeiro")
+    financeiro.limite_pendentes  # existe e e configuravel
+
+    for i in range(financeiro.limite_pendentes + 150):
+        eco_pequeno.barramento.enviar("diretor", "financeiro", f"t{i}", "corpo")
+
+    assert len(financeiro._pendentes) == financeiro.limite_pendentes
+    pendentes = financeiro.pendentes()
+    assert pendentes[-1].assunto == f"t{financeiro.limite_pendentes + 149}"
+    assert financeiro.pendentes() == []       # ler esvazia
+
+
+def test_agente_nao_enfileira_as_proprias_mensagens(eco_pequeno):
+    financeiro = eco_pequeno.agente("financeiro")
+    financeiro.pendentes()
+    eco_pequeno.barramento.enviar("financeiro", "*", "Comunicado", "avisando todo mundo")
+    assert financeiro.pendentes() == []
+
+
 def test_handoff_entre_agentes_e_detectado(eco):
     agente = eco.agente("seo")
     achados = agente.handoffs("Fechei o mapa.\n@copy {escreva os titulos das 5 paginas}")

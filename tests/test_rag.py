@@ -93,6 +93,39 @@ def test_reindexar_a_mesma_referencia_nao_duplica(semantica):
     assert semantica.estatisticas()["trechos"] == primeiro
 
 
+@pytest.mark.parametrize("vizinha,alvo", [
+    ("docs/aXb.md", "docs/a_b.md"),      # '_' casa qualquer caractere no LIKE
+    ("relatorio-2026", "relatorio%2026"),  # '%' casa qualquer sequencia
+    ("nota-x", "nota\\x"),                # a propria barra de escape
+])
+def test_reindexar_nao_apaga_documento_vizinho(semantica, vizinha, alvo):
+    """Curinga de LIKE em referencia ja apagou indice de outro documento.
+
+    As referencias vem de caminho de arquivo informado pelo usuario, e '_' e
+    '%' sao curingas: sem escapar, indexar 'docs/a_b.md' destruia os trechos
+    de 'docs/aXb.md' silenciosamente.
+    """
+    semantica.indexar("conteudo da vizinha " * 20, origem="arquivo", referencia=vizinha)
+    semantica.indexar("conteudo do alvo " * 20, origem="arquivo", referencia=alvo)
+    semantica.indexar("alvo reindexado " * 20, origem="arquivo", referencia=alvo)
+
+    referencias = {
+        linha[0].rsplit("#", 1)[0]
+        for linha in semantica._conn.execute("SELECT referencia FROM vetores")
+    }
+    assert vizinha in referencias, f"indexar '{alvo}' apagou '{vizinha}'"
+    assert alvo in referencias
+
+
+def test_padrao_de_referencia_escapa_curingas():
+    from movili.core.rag import _padrao_de_referencia
+
+    assert _padrao_de_referencia("a_b") == "a\\_b#%"
+    assert _padrao_de_referencia("50%") == "50\\%#%"
+    assert _padrao_de_referencia("a\\b") == "a\\\\b#%"
+    assert _padrao_de_referencia("simples") == "simples#%"
+
+
 def test_indexar_texto_vazio_nao_grava(semantica):
     assert semantica.indexar("   ", origem="entrega", referencia="vazio") == 0
     assert semantica.estatisticas()["trechos"] == 0

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -11,6 +12,10 @@ from .barramento import Barramento
 from .ferramentas import CaixaDeFerramentas
 from .memoria import MemoriaCorporativa, MemoriaCurta
 from .mensagem import Mensagem, Prioridade, Tipo
+
+# Teto da fila de mensagens nao lidas de um agente. Ninguem chama pendentes()
+# no fluxo normal, entao sem teto a lista guardaria a sessao inteira.
+LIMITE_PENDENTES = 200
 
 BLOCO_HANDOFF = re.compile(
     r"@(?P<destino>[a-z0-9_]+)\s*\{(?P<assunto>[^}]{1,160})\}", re.IGNORECASE
@@ -57,6 +62,7 @@ class Agente:
         ferramentas: CaixaDeFerramentas | None = None,
         memoria: MemoriaCorporativa | None = None,
         max_turnos_ferramenta: int = 3,
+        limite_pendentes: int = LIMITE_PENDENTES,
     ) -> None:
         self.perfil = perfil
         self.roteador = roteador
@@ -67,7 +73,8 @@ class Agente:
         self.memoria = MemoriaCurta()
         self.max_turnos_ferramenta = max_turnos_ferramenta
         self.barramento.assinar(perfil.id, self._receber)
-        self._pendentes: list[Mensagem] = []
+        self.limite_pendentes = limite_pendentes
+        self._pendentes: deque[Mensagem] = deque(maxlen=limite_pendentes)
 
     # ------------------------------------------------------------------
     # Identidade

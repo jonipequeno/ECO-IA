@@ -64,6 +64,27 @@ def test_observador_ve_tudo():
     assert len(tudo) == 2
 
 
+def test_caixa_de_entrada_tem_teto():
+    """Ninguem le a caixa no fluxo normal; sem teto ela guardaria a sessao toda."""
+    bus = Barramento(limite_historico=50, limite_caixa=20)
+    bus.assinar("seo", lambda m: None)
+    for i in range(200):
+        bus.enviar("copy", "seo", f"assunto {i}", "corpo")
+
+    caixa = bus.caixa_de_entrada("seo")
+    assert len(caixa) == 20
+    assert caixa[-1].assunto == "assunto 199"      # descarta as antigas, nao as novas
+
+
+def test_caixa_de_entrada_esvazia_ao_ler():
+    bus = Barramento()
+    bus.assinar("seo", lambda m: None)
+    bus.enviar("copy", "seo", "x", "y")
+    assert len(bus.caixa_de_entrada("seo")) == 1
+    assert bus.caixa_de_entrada("seo") == []
+    assert bus.caixa_de_entrada("ninguem") == []
+
+
 def test_memoria_curta_respeita_a_janela():
     m = MemoriaCurta(max_turnos=4)
     for i in range(10):

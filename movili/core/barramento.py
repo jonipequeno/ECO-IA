@@ -16,13 +16,26 @@ from .mensagem import Mensagem, Prioridade, Tipo
 
 Assinante = Callable[[Mensagem], None]
 
+# Teto por caixa de entrada. Quem nao le a propria caixa (o caminho normal
+# hoje: os agentes recebem por callback) acumularia todas as mensagens da
+# sessao para sempre - o painel roda por horas e cresceria sem limite.
+LIMITE_CAIXA = 500
+
 
 class Barramento:
     """Pub/sub em memoria, thread-safe, com historico auditavel."""
 
-    def __init__(self, limite_historico: int = 5000, verboso: bool = False) -> None:
+    def __init__(
+        self,
+        limite_historico: int = 5000,
+        verboso: bool = False,
+        limite_caixa: int = LIMITE_CAIXA,
+    ) -> None:
         self._assinantes: dict[str, list[Assinante]] = defaultdict(list)
-        self._caixas: dict[str, deque[Mensagem]] = defaultdict(deque)
+        self.limite_caixa = limite_caixa
+        self._caixas: dict[str, deque[Mensagem]] = defaultdict(
+            lambda: deque(maxlen=self.limite_caixa)
+        )
         self._lock = threading.RLock()
         self.historico: deque[Mensagem] = deque(maxlen=limite_historico)
         self.verboso = verboso

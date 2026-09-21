@@ -46,6 +46,25 @@ CREATE INDEX IF NOT EXISTS idx_vet_agente ON vetores(agente);
 TAMANHO_TRECHO = 1200
 SOBREPOSICAO = 150
 
+# Caractere de escape do LIKE. Ver _padrao_de_referencia().
+ESCAPE_LIKE = "\\"
+
+
+def _padrao_de_referencia(referencia: str) -> str:
+    """Monta o padrao LIKE que casa com os trechos de UM documento.
+
+    '_' e '%' sao curingas no LIKE do SQL. Sem escapar, reindexar
+    'docs/a_b.md' apagaria silenciosamente os trechos de 'docs/aXb.md',
+    porque '_' casa qualquer caractere. Referencias vem de caminho de
+    arquivo informado pelo usuario, entao isso acontece de verdade.
+    """
+    escapada = (
+        referencia.replace(ESCAPE_LIKE, ESCAPE_LIKE + ESCAPE_LIKE)
+        .replace("%", ESCAPE_LIKE + "%")
+        .replace("_", ESCAPE_LIKE + "_")
+    )
+    return f"{escapada}#%"
+
 
 @dataclass
 class Achado:
@@ -163,8 +182,8 @@ class MemoriaSemantica:
 
         with self._lock:
             self._conn.execute(
-                "DELETE FROM vetores WHERE origem=? AND referencia LIKE ?",
-                (origem, f"{referencia}#%"),
+                f"DELETE FROM vetores WHERE origem=? AND referencia LIKE ? ESCAPE '{ESCAPE_LIKE}'",
+                (origem, _padrao_de_referencia(referencia)),
             )
             self._conn.executemany(
                 """INSERT OR REPLACE INTO vetores
