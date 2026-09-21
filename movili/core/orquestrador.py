@@ -22,6 +22,19 @@ from .rag import MemoriaSemantica
 
 JSON_LISTA = re.compile(r"\[[^\[\]]*\]", re.DOTALL)
 
+# Sentinela para "quem coordena o ecossistema", resolvida em tempo de execucao.
+#
+# Nao da para usar quadro.ORQUESTRADOR como valor padrao aqui: movili.agentes
+# importa movili.core.agente, o que dispara movili/core/__init__.py; se este
+# modulo for carregado nesse meio do caminho, os defaults seriam avaliados com
+# movili.agentes ainda pela metade e quebrariam com AttributeError.
+PADRAO = "__orquestrador_padrao__"
+
+
+def _resolver(ident: str | None) -> str | None:
+    """Troca a sentinela pelo orquestrador real do quadro."""
+    return quadro.ORQUESTRADOR if ident == PADRAO else ident
+
 
 @dataclass
 class Etapa:
@@ -45,7 +58,7 @@ class Fluxo:
     nome: str
     descricao: str
     etapas: list[Etapa]
-    consolidador: str | None = quadro.ORQUESTRADOR
+    consolidador: str | None = PADRAO
     instrucao_consolidacao: str = (
         "Consolide as entregas acima em um plano unico e executavel da Movili. "
         "Resolva as contradicoes entre as areas explicitamente - nao repita o que "
@@ -217,7 +230,7 @@ class Ecossistema:
         *,
         contexto: str = "",
         projeto: str = "",
-        remetente: str = quadro.ORQUESTRADOR,
+        remetente: str = PADRAO,
         tipo: Tipo = Tipo.TAREFA,
         prioridade: Prioridade = Prioridade.NORMAL,
         thread: str = "",
@@ -225,6 +238,7 @@ class Ecossistema:
         profundidade: int = 0,
     ) -> ResultadoEtapa:
         """Manda uma tarefa para um agente, registra no barramento e devolve a entrega."""
+        remetente = _resolver(remetente) or quadro.ORQUESTRADOR
         agente = self.agente(ident)
         inicio = datetime.now(timezone.utc)
 
@@ -406,10 +420,11 @@ class Ecossistema:
                     saidas[res.agente] = res.entrega
                 executadas.update(i for i, _ in grupo)
 
-        if consolidar and fluxo.consolidador and fluxo.consolidador in self.agentes:
+        consolidador = _resolver(fluxo.consolidador)
+        if consolidar and consolidador and consolidador in self.agentes:
             contexto = self._montar_contexto(briefing, saidas, None)
             res = self.delegar(
-                fluxo.consolidador,
+                consolidador,
                 fluxo.instrucao_consolidacao,
                 contexto=contexto,
                 projeto=projeto,
@@ -446,7 +461,7 @@ class Ecossistema:
         participantes: list[str] | None = None,
         rodadas: int = 2,
         projeto: str = "",
-        mediador: str | None = quadro.ORQUESTRADOR,
+        mediador: str | None = PADRAO,
     ) -> ResultadoFluxo:
         """Mesa redonda: cada agente ouve o que os anteriores disseram e responde.
 
@@ -454,6 +469,7 @@ class Ecossistema:
         segunda rodada em diante cada um pode concordar, discordar ou pedir algo
         a um colega.
         """
+        mediador = _resolver(mediador)
         presentes = [i for i in (participantes or list(self.agentes)) if i in self.agentes]
         if mediador and mediador in self.agentes and mediador in presentes:
             presentes = [mediador] + [i for i in presentes if i != mediador]

@@ -175,6 +175,19 @@ Isso inverte a relação usual: em vez de o ecossistema consumir um modelo, **qu
 cliente de modelo passa a consumir o ecossistema** — um app de voz, o LM Studio, uma
 instalação externa do OpenJarvis ou qualquer integração que já fale OpenAI.
 
+### Ordem de importação
+
+`movili.agentes` importa `movili.core.agente`, e `movili.core.orquestrador` importa
+`movili.agentes` de volta. O ciclo é tolerável **desde que nada de `movili.agentes`
+seja avaliado em tempo de import** dentro do orquestrador — senão o módulo ainda está
+pela metade quando o valor é lido.
+
+Por isso os defaults de "quem coordena" (`Fluxo.consolidador`, `delegar(remetente=…)`,
+`reuniao(mediador=…)`) guardam a sentinela `PADRAO` e só viram `quadro.ORQUESTRADOR`
+quando são usados. `tests/test_importacao.py` importa o pacote em nove ordens
+diferentes, cada uma num interpretador limpo — é a única forma de pegar ciclo de
+import antes do usuário.
+
 ---
 
 ## Configuração (`movili/config.py`)

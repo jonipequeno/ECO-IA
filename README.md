@@ -494,7 +494,7 @@ Para GPU NVIDIA, descomente o bloco `deploy.resources` no `docker-compose.yml`.
 make teste        # ou: python -m pytest tests -q
 ```
 
-94 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
+107 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
 Cobrem estrutura do quadro, consistência dos fluxos (inclusive se uma etapa depende
 de alguém que ainda não atuou), roteamento de modelos, barramento, memória, sandbox
 das ferramentas, fallback entre backends, a memória semântica (fatiamento, cosseno
