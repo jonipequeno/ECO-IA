@@ -127,6 +127,31 @@ importam com `movili memoria indexar --projeto <nome>`.
 
 ---
 
+## Acompanhar pelo navegador
+
+```bash
+movili painel                    # http://127.0.0.1:8080
+```
+
+Dispare um trabalho pela coluna da direita e veja o barramento encher: cada tarefa que
+a diretoria distribui, cada entrega que volta, cada pergunta de um agente para outro,
+no instante em que acontece.
+
+Clicar numa pessoa do organograma abre a aba "Pessoa" já com ela selecionada — atalho
+para perguntar algo direto a um funcionário sem sair do painel.
+
+`Ctrl+Enter` na caixa de texto envia sem tirar a mão do teclado.
+
+Para acompanhar de outro dispositivo na mesma rede:
+
+```bash
+movili painel --host 0.0.0.0
+```
+
+Sem autenticação — só faça isso em rede confiável.
+
+---
+
 ## Conversar por voz
 
 ```bash

@@ -67,6 +67,7 @@ services:
       - ./data:/app/data
       - ./config:/app/config:ro
     ports:
+      - "8080:8080"   # painel web
       - "8000:8000"   # API FastAPI
       - "8123:8123"   # ponte OpenJarvis (OpenAI-compativel)
     # Mantem o container vivo para uso interativo via 'docker compose exec'.

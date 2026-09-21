@@ -23,6 +23,9 @@ movili = "movili.cli:main"
 [tool.setuptools.packages.find]
 include = ["movili*"]
 
+[tool.setuptools.package-data]
+"movili.painel" = ["web/*.html", "web/*.css", "web/*.js"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

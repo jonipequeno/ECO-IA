@@ -19,6 +19,6 @@ COPY config/ ./config/
 COPY scripts/ ./scripts/
 RUN pip install --no-cache-dir -e . && mkdir -p data workspace
 
-EXPOSE 8000 8123
+EXPOSE 8000 8080 8123
 
 CMD ["movili", "status"]

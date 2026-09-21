@@ -26,6 +26,7 @@ movili jarvis                                 # conversa por voz com a empresa
 - [Como eles conversam](#como-eles-conversam)
 - [Processos internos (fluxos)](#processos-internos-fluxos)
 - [Memória da empresa](#memória-da-empresa)
+- [Painel web](#painel-web)
 - [OpenJarvis — a camada conversacional](#openjarvis--a-camada-conversacional)
 - [Instalação](#instalação)
 - [Modelos do Ollama: qual usar para quê](#modelos-do-ollama-qual-usar-para-quê)
@@ -206,6 +207,41 @@ Ajuste em `config/modelos.yaml → embeddings`, ou desligue com `MOVILI_EMBEDDIN
 
 ---
 
+## Painel web
+
+O terminal mostra uma linha por agente. O painel mostra a empresa **conversando**:
+cada mensagem do barramento aparece no navegador no instante em que é publicada.
+
+```bash
+movili painel          # http://127.0.0.1:8080
+```
+
+Três colunas:
+
+| Coluna | O que faz |
+|---|---|
+| **Equipe** | organograma por setor, com o modelo de cada pessoa; clique em alguém para falar direto |
+| **Barramento ao vivo** | cada tarefa, entrega, pergunta e decisão conforme acontece, com tipo e remetente |
+| **Dar trabalho à casa** | dispara triagem, fluxo, reunião ou pergunta a uma pessoa; acompanha a fila e o uso de modelo |
+
+O feed usa Server-Sent Events — sem polling, sem WebSocket, sem framework. O
+servidor é `http.server` da biblioteca padrão, mesma escolha da ponte do OpenJarvis:
+**nenhuma dependência nova**.
+
+Os trabalhos entram numa fila com um único worker, de propósito: com um backend local,
+disparar três fluxos ao mesmo tempo só enfileira no servidor de modelo e deixa tudo mais
+lento. Ao encerrar com Ctrl+C, o painel espera o trabalho em andamento terminar antes de
+devolver o controle — senão o banco fecharia no meio de uma entrega.
+
+```bash
+movili painel --host 0.0.0.0 --porta 8080    # acessível na rede local
+```
+
+> O painel não tem autenticação. Ele é uma ferramenta de trabalho local: exponha em
+> `0.0.0.0` apenas em rede confiável.
+
+---
+
 ## OpenJarvis — a camada conversacional
 
 O **OpenJarvis** é a recepção falada do ecossistema. Ele entende o que você quer,
@@ -380,6 +416,7 @@ movili memoria buscar "<consulta>" [--agente X] [--minimo 0.5]
 movili memoria indexar {--projeto X | --arquivo Y}
 movili memoria limpar [--projeto X]
 
+movili painel [--porta 8080]                     # painel web ao vivo
 movili jarvis [--diagnostico]                    # conversa por voz
 movili ponte [--porta 8123]                      # API OpenAI-compatível
 movili api [--porta 8000]                        # API REST (requer FastAPI)
@@ -433,6 +470,7 @@ movili/
 │   └── orquestrador.py  fluxos, reuniões, triagem, paralelismo
 ├── agentes/             20 fichas funcionais (uma por arquivo)
 ├── fluxos/              7 processos internos
+├── painel/              painel web ao vivo (SSE, stdlib, sem dependência)
 ├── jarvis/              OpenJarvis: voz, conversa e ponte OpenAI
 ├── api/                 API REST opcional (FastAPI)
 └── cli.py               interface de linha de comando
@@ -484,6 +522,7 @@ docker compose exec movili movili status
 docker compose exec movili movili fluxo novo-projeto "sua demanda aqui"
 ```
 
+Portas publicadas: `8080` (painel), `8000` (API) e `8123` (ponte OpenJarvis).
 Para GPU NVIDIA, descomente o bloco `deploy.resources` no `docker-compose.yml`.
 
 ---
@@ -494,12 +533,14 @@ Para GPU NVIDIA, descomente o bloco `deploy.resources` no `docker-compose.yml`.
 make teste        # ou: python -m pytest tests -q
 ```
 
-107 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
+132 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
 Cobrem estrutura do quadro, consistência dos fluxos (inclusive se uma etapa depende
 de alguém que ainda não atuou), roteamento de modelos, barramento, memória, sandbox
 das ferramentas, fallback entre backends, a memória semântica (fatiamento, cosseno
-degenerado, isolamento de procedência, degradação sem backend) e a interpretação de
-intenção do Jarvis.
+degenerado, isolamento de procedência, degradação sem backend), o painel (validação de
+entrada, fila de trabalho, encerramento ordenado) e a interpretação de intenção do
+Jarvis. Nove ordens de importação diferentes rodam em subprocess, para pegar ciclo de
+import antes que o usuário pegue.
 
 ```bash
 python scripts/verificar.py    # diagnóstico do ambiente e modelos faltando

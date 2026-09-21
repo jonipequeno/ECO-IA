@@ -3,7 +3,7 @@
 O ecossistema tem quatro camadas. Cada uma só conhece a de baixo.
 
 ```
-   CLI  ·  OpenJarvis (voz)  ·  Ponte OpenAI  ·  API REST
+  CLI · Painel web · OpenJarvis (voz) · Ponte OpenAI · API REST
                         ↓
                   Orquestrador
         fluxos · reuniões · triagem · paralelismo
@@ -187,6 +187,37 @@ Por isso os defaults de "quem coordena" (`Fluxo.consolidador`, `delegar(remetent
 quando são usados. `tests/test_importacao.py` importa o pacote em nove ordens
 diferentes, cada uma num interpretador limpo — é a única forma de pegar ciclo de
 import antes do usuário.
+
+---
+
+## Painel web (`movili/painel/`)
+
+Um `ThreadingHTTPServer` da biblioteca padrão que serve uma página única e três
+superfícies: `GET /api/estado` (snapshot), `GET /api/eventos` (SSE) e
+`POST /api/executar` (dispara trabalho).
+
+**Por que SSE e não WebSocket.** O tráfego é unidirecional — o servidor empurra o que
+acontece no barramento, e o navegador manda comandos por POST comum. SSE resolve isso
+com `EventSource`, reconecta sozinho e cabe na `http.server` sem biblioteca nenhuma.
+WebSocket exigiria uma dependência para ganhar um canal de volta que o painel não usa.
+
+**A `Central`** registra um observador no barramento e repassa cada mensagem para as
+filas dos clientes conectados. Fila de cliente cheia (aba abandonada, rede lenta)
+descarta o evento em vez de travar o barramento — é `put_nowait` dentro de um
+`try/except queue.Full`.
+
+**Um worker só.** A fila de trabalho tem uma única thread executora. Não é limitação:
+com um backend local, três fluxos simultâneos apenas enfileiram no servidor de modelo
+e cada um fica mais lento, além de embaralhar o feed.
+
+**Encerramento ordenado.** `Central.encerrar()` para de aceitar trabalho, cancela o que
+está na fila e espera a tarefa em andamento terminar, com timeout. `servir()` chama isso
+antes de devolver o controle à CLI, que fecha o SQLite logo depois — sem isso, um Ctrl+C
+no meio de um fluxo fecharia o banco debaixo do worker.
+
+**Erro previsto vs. bug.** `TarefaInvalida` termina a tarefa com mensagem limpa; qualquer
+outra exceção imprime o stack trace no log do servidor. A distinção importa: log cheio de
+traceback de erro esperado é log que ninguém lê.
 
 ---
 

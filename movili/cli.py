@@ -393,6 +393,17 @@ def cmd_ponte(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_painel(args: argparse.Namespace) -> int:
+    from .painel.servidor import servir
+
+    eco = _montar(args)
+    try:
+        servir(eco, host=args.host, porta=args.porta)
+    finally:
+        eco.encerrar()
+    return 0
+
+
 def cmd_api(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -425,6 +436,7 @@ def construir_parser() -> argparse.ArgumentParser:
               movili chat
               movili jarvis --diagnostico
               movili jarvis                  # conversa por voz
+              movili painel                  # acompanhe a empresa ao vivo no navegador
               movili ponte                   # expoe a empresa como API OpenAI
               movili memoria status
               movili memoria buscar "precificacao de projeto de logistica"
@@ -516,6 +528,11 @@ def construir_parser() -> argparse.ArgumentParser:
     s.add_argument("--porta", type=int, default=8123)
     s.add_argument("--frases", type=int, default=6)
     s.set_defaults(func=cmd_ponte)
+
+    s = sub.add_parser("painel", help="painel web: acompanhe a empresa trabalhando ao vivo")
+    s.add_argument("--host", default="127.0.0.1")
+    s.add_argument("--porta", type=int, default=8080)
+    s.set_defaults(func=cmd_painel)
 
     s = sub.add_parser("api", help="sobe a API HTTP do ecossistema")
     s.add_argument("--host", default="127.0.0.1")
