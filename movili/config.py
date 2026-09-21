@@ -28,6 +28,7 @@ ENV_DB = "MOVILI_DB"
 ENV_WORKSPACE = "MOVILI_WORKSPACE"
 ENV_EMBEDDINGS = "MOVILI_EMBEDDINGS"      # "0" desliga a memoria semantica
 ENV_MODELO_EMBED = "MOVILI_MODELO_EMBEDDING"
+ENV_OBSIDIAN = "MOVILI_OBSIDIAN"          # pasta do cofre; vazio desliga
 
 
 def _ler_arquivo(caminho: Path) -> dict[str, Any]:
@@ -56,6 +57,7 @@ class Config:
     embeddings: dict[str, Any] = field(default_factory=dict)
     caminho_db: str = "data/movili.db"
     workspace: str = "workspace"
+    obsidian: str = ""  # pasta do cofre do Obsidian; vazio desliga a exportacao
     tentativas: int = 2
 
     def modelo_do_agente(self, agente: str) -> tuple[str | None, str | None]:
@@ -149,6 +151,7 @@ def carregar(
         perfis_hardware=modelos.get("perfis_hardware") or {},
         caminho_db=os.getenv(ENV_DB, modelos.get("banco", "data/movili.db")),
         workspace=os.getenv(ENV_WORKSPACE, modelos.get("workspace", "workspace")),
+        obsidian=os.getenv(ENV_OBSIDIAN, modelos.get("obsidian") or "").strip(),
         tentativas=int(modelos.get("tentativas", 2)),
     )
 

@@ -40,8 +40,14 @@ def test_html_do_painel_viaja_com_o_pacote():
     assert arquivo.is_file(), "movili/painel/web/index.html precisa existir no pacote"
     html = arquivo.read_text(encoding="utf-8")
     assert "<!DOCTYPE html>" in html
-    assert "/api/eventos" in html and "/api/executar" in html
+    assert "/api/rede/eventos" in html and "/api/executar" in html
     assert 'lang="pt-BR"' in html
+
+
+def test_painel_classico_segue_disponivel():
+    """A tela anterior (feed, fluxos, reunioes, rotinas) fica em /classico."""
+    html = (WEB / "classico.html").read_text(encoding="utf-8")
+    assert "/api/eventos" in html and "/api/executar" in html
 
 
 def test_pacote_declara_o_html_como_dado():

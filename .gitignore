@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -17,8 +17,15 @@ venv/
 # Dados gerados em execucao
 data/*.db
 data/*.db-journal
+data/rede-pesos.json
 workspace/*
 !workspace/.gitkeep
+
+# Cofre do Obsidian: o que a empresa gera e o estado do app ficam fora do git;
+# as notas do usuario (Conhecimento/ etc.) podem ser versionadas
+obsidian/Movili/
+obsidian/.obsidian/workspace*.json
+obsidian/.trash/
 
 # Sistema operacional
 .DS_Store

@@ -45,6 +45,8 @@ def _finalizar(eco: Ecossistema, resultado, args: argparse.Namespace) -> int:
     caminhos = eco.salvar(resultado, destino)
     print(f"\nRelatorio:  {caminhos['relatorio']}")
     print(f"Conversas:  {caminhos['conversas']}")
+    if "obsidian" in caminhos:
+        print(f"Obsidian:   {caminhos['obsidian']}")
 
     metricas = eco.metricas()
     if metricas:
@@ -349,6 +351,60 @@ def cmd_memoria(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_obsidian(args: argparse.Namespace) -> int:
+    eco = _montar(args)
+    try:
+        cofre = eco.cofre()
+        if cofre is None:
+            print(
+                "O cofre do Obsidian esta desligado.\n"
+                "Ligue em config/modelos.yaml (obsidian: <pasta>) ou com MOVILI_OBSIDIAN=<pasta>.",
+                file=sys.stderr,
+            )
+            return 1
+
+        if args.acao == "status":
+            cofre.preparar()
+            _cabecalho("COFRE DO OBSIDIAN")
+            print(f"  pasta:             {cofre.raiz.resolve()}")
+            projetos = list((cofre.gerada / "Projetos").glob("*.md"))
+            print(f"  projetos gerados:  {len(projetos)}")
+            notas = cofre.notas_do_usuario()
+            print(f"  suas notas:        {len(notas)}")
+            if eco.semantica is not None:
+                na_memoria = eco.semantica.documentos("nota")
+                print(f"  notas na memoria:  {len(na_memoria)}")
+            else:
+                print("  notas na memoria:  (memoria semantica desligada)")
+            print("\n  Abra a pasta acima no Obsidian: 'Abrir pasta como cofre'.")
+
+        elif args.acao == "exportar":
+            notas = cofre.exportar_workspace(eco.config.workspace)
+            print(f"{len(notas)} projeto(s) do workspace exportado(s) para {cofre.gerada}")
+
+        elif args.acao == "indexar":
+            if eco.semantica is None:
+                print(
+                    "A memoria semantica esta desligada - as notas nao tem para onde ir.\n"
+                    "Ligue em config/modelos.yaml (embeddings.habilitado: true) e baixe o "
+                    "modelo com:\n  ollama pull nomic-embed-text",
+                    file=sys.stderr,
+                )
+                return 1
+            cofre.preparar()
+            c = cofre.indexar(eco.semantica)
+            print(
+                f"{c['indexadas']} nota(s) indexada(s) ({c['trechos']} trechos), "
+                f"{c['iguais']} sem mudanca, {c['removidas']} removida(s) da memoria"
+            )
+    except LLMIndisponivel as exc:
+        print(f"\nERRO: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        eco.encerrar()
+    return 0
+
+
 def cmd_jarvis(args: argparse.Namespace) -> int:
     from .jarvis import diagnostico as diag_voz
     from .jarvis.sessao import SessaoJarvis
@@ -535,6 +591,7 @@ def construir_parser() -> argparse.ArgumentParser:
               movili ponte                   # expoe a empresa como API OpenAI
               movili memoria status
               movili memoria buscar "precificacao de projeto de logistica"
+              movili obsidian indexar        # suas notas do Obsidian viram memoria
             """
         ),
     )
@@ -604,6 +661,10 @@ def construir_parser() -> argparse.ArgumentParser:
     s.add_argument("--projeto", dest="projeto_memoria",
                    help="projeto alvo de 'indexar' e 'limpar'")
     s.set_defaults(func=cmd_memoria, projeto_memoria=None)
+
+    s = sub.add_parser("obsidian", help="cofre do Obsidian: projetos viram notas, notas viram memoria")
+    s.add_argument("acao", nargs="?", default="status", choices=["status", "exportar", "indexar"])
+    s.set_defaults(func=cmd_obsidian)
 
     s = sub.add_parser("jarvis", help="conversa por voz com a empresa (OpenJarvis)")
     s.add_argument("--tts", default="auto", choices=["auto", "piper", "sistema", "texto"],

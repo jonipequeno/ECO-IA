@@ -62,9 +62,11 @@ services:
       MOVILI_MODELO_PADRAO: qwen3:8b
       MOVILI_DB: /app/data/movili.db
       MOVILI_WORKSPACE: /app/workspace
+      MOVILI_OBSIDIAN: /app/obsidian
     volumes:
       - ./workspace:/app/workspace
       - ./data:/app/data
+      - ./obsidian:/app/obsidian   # cofre do Obsidian: abra esta pasta no app
       - ./config:/app/config:ro
     ports:
       - "8080:8080"   # painel web

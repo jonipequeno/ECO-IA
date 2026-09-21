@@ -18,6 +18,7 @@ from .barramento import Barramento
 from .ferramentas import CaixaDeFerramentas
 from .memoria import MemoriaCorporativa
 from .mensagem import Mensagem, Prioridade, Tipo
+from .obsidian import CofreObsidian, Ficha
 from .rag import MemoriaSemantica
 
 JSON_LISTA = re.compile(r"\[[^\[\]]*\]", re.DOTALL)
@@ -34,6 +35,14 @@ PADRAO = "__orquestrador_padrao__"
 def _resolver(ident: str | None) -> str | None:
     """Troca a sentinela pelo orquestrador real do quadro."""
     return quadro.ORQUESTRADOR if ident == PADRAO else ident
+
+
+def _ficha_do_quadro(ident: str) -> Ficha | None:
+    """Ficha do funcionario para o cofre do Obsidian (resolvida so quando usada)."""
+    if ident not in quadro.REGISTRO:
+        return None
+    p = quadro.perfil_de(ident)
+    return Ficha(id=p.id, nome=p.nome, cargo=p.cargo, setor=p.setor, missao=p.missao)
 
 
 @dataclass
@@ -607,7 +616,21 @@ class Ecossistema:
         md.write_text(resultado.markdown(), encoding="utf-8")
         js.write_text(json.dumps(resultado.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
         self.barramento.exportar(conversas)
-        return {"relatorio": md, "resultado": js, "conversas": conversas}
+        caminhos = {"relatorio": md, "resultado": js, "conversas": conversas}
+
+        cofre = self.cofre()
+        if cofre is not None:
+            try:
+                caminhos["obsidian"] = cofre.exportar(resultado.to_dict())
+            except OSError as exc:  # cofre sincronizado travado, disco cheio: o relatorio ja saiu
+                self._log(f"   (nao foi possivel gravar no cofre do Obsidian: {exc})")
+        return caminhos
+
+    def cofre(self) -> CofreObsidian | None:
+        """O cofre do Obsidian configurado, ou None se estiver desligado."""
+        if not self.config.obsidian:
+            return None
+        return CofreObsidian(self.config.obsidian, fichas=_ficha_do_quadro)
 
     def metricas(self) -> dict[str, dict[str, int]]:
         return dict(self.roteador.metricas)

@@ -40,6 +40,7 @@ movili jarvis --palavra                       # conversa por voz, acorda pelo no
 - [Como eles conversam](#como-eles-conversam)
 - [Processos internos (fluxos)](#processos-internos-fluxos)
 - [Memória da empresa](#memória-da-empresa)
+- [Cofre do Obsidian](#cofre-do-obsidian)
 - [Rotinas: o calendário interno](#rotinas-o-calendário-interno)
 - [Painel web](#painel-web)
 - [OpenJarvis — a camada conversacional](#openjarvis--a-camada-conversacional)
@@ -222,6 +223,38 @@ Ajuste em `config/modelos.yaml → embeddings`, ou desligue com `MOVILI_EMBEDDIN
 
 ---
 
+## Cofre do Obsidian
+
+A memória da empresa também vive num cofre do [Obsidian](https://obsidian.md), na pasta
+`obsidian/`, e funciona nos dois sentidos:
+
+- **A empresa escreve.** Cada fluxo ou reunião salvo vira uma nota em
+  `Movili/Projetos`, com links para a entrega de cada funcionário em `Movili/Entregas` e
+  para a ficha dele em `Movili/Equipe`. No grafo (Ctrl+G) dá para ver quem trabalhou em
+  quê e quais projetos se parecem.
+- **Você ensina.** Tudo o que você escreve **fora** de `Movili/` (a pasta `Conhecimento/`
+  já vem criada) entra na memória semântica: tabela de preços, clientes, padrões
+  técnicos, contratos modelo. Os agentes passam a consultar essas notas quando trabalham.
+
+```bash
+movili obsidian status      # o que tem no cofre e o que já está na memória
+movili obsidian exportar    # traz para o cofre os projetos já salvos no workspace
+movili obsidian indexar     # leva as suas notas para a memória da empresa
+```
+
+No Obsidian: **Abrir pasta como cofre** → escolha `obsidian/`.
+
+O `indexar` só reprocessa a nota que mudou e tira da memória a nota que você apagou ou
+renomeou. Senão os agentes continuariam citando um preço que você já corrigiu. As notas
+geradas em `Movili/` podem ser reescritas a cada exportação; só a ficha de cada
+funcionário é criada uma única vez e depois fica sendo sua.
+
+Não precisa de plugin nem de API do Obsidian: o cofre é só uma pasta de `.md`. Para usar
+um cofre que você já tem, aponte `obsidian:` em `config/modelos.yaml` ou
+`MOVILI_OBSIDIAN` para ele. Deixe vazio para desligar.
+
+---
+
 ## Rotinas: o calendário interno
 
 Até aqui a empresa só trabalhava quando você mandava. As rotinas dão a ela um ritmo
@@ -266,7 +299,34 @@ cada mensagem do barramento aparece no navegador no instante em que é publicada
 movili painel          # http://127.0.0.1:8080
 ```
 
-Três colunas:
+### Rede Movili (tela principal)
+
+A empresa como uma rede neural viva: os 20 agentes são neurônios agrupados por setor,
+ligados pelas 67 sinapses que as fichas declaram em `interlocutores`. As 19 recíprocas
+saem mais grossas; as do diretor, que fala com todos, ficam latentes até serem usadas.
+
+- Cada mensagem do barramento cruza a sinapse certa como um cometa, com o glifo e a cor
+  do tipo. Entregas, respostas, revisões e decisões **reforçam** a sinapse; sem uso, ela
+  atrofia.
+- Uma demanda que chega de fora (pelo painel, por exemplo) acende uma onda a partir do
+  agente que a recebe.
+- Clique num neurônio para abrir a ficha: nome, cargo, modelo, sinapses, últimas trocas
+  e um campo para falar direto com aquela pessoa.
+- A rede **aprende entre sessões**: os pesos das sinapses vão para
+  `data/rede-pesos.json` a cada minuto e ao fechar a aba.
+
+O design system vem pronto em `movili/painel/web/rede-movili/` e não é editado aqui.
+Mudança visual volta para o kit. Os dados saem de `movili/painel/rede.py`:
+
+| Rota | O que entrega |
+|---|---|
+| `GET /api/rede/topologia` | regiões, agentes, sinapses, recíprocas e quem declara todos |
+| `GET /api/rede/eventos` | SSE: um evento por mensagem, com `id` para retomar via `Last-Event-ID` |
+| `GET` / `POST /api/rede/pesos` | o que a rede aprendeu, no formato `{"a\|b": peso}` |
+
+### Painel clássico
+
+A tela anterior segue em **`/classico`**, com três colunas:
 
 | Coluna | O que faz |
 |---|---|
@@ -489,6 +549,7 @@ movili memoria status                            # estado do índice semântico
 movili memoria buscar "<consulta>" [--agente X] [--minimo 0.5]
 movili memoria indexar {--projeto X | --arquivo Y}
 movili memoria limpar [--projeto X]
+movili obsidian {status | exportar | indexar}   # cofre do Obsidian
 
 movili rotinas [listar|proximas|rodar|agenda]     # calendário interno
 movili painel [--porta 8080]                     # painel web ao vivo

@@ -10,6 +10,7 @@ similaridade de cosseno em Python puro - sem banco vetorial externo.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
@@ -39,6 +40,17 @@ CREATE TABLE IF NOT EXISTS vetores (
 );
 CREATE INDEX IF NOT EXISTS idx_vet_projeto ON vetores(projeto);
 CREATE INDEX IF NOT EXISTS idx_vet_agente ON vetores(agente);
+
+-- Documento inteiro por referencia, para reindexar so o que mudou (notas do
+-- cofre do Obsidian). 'modelo' e a assinatura <backend>/<modelo> dos vetores.
+CREATE TABLE IF NOT EXISTS documentos (
+    origem TEXT NOT NULL,
+    referencia TEXT NOT NULL,
+    resumo TEXT NOT NULL,
+    modelo TEXT,
+    atualizado_em TEXT,
+    PRIMARY KEY (origem, referencia)
+);
 """
 
 # Um pedaco por vez: grande o bastante para ter contexto, pequeno o bastante
@@ -174,10 +186,13 @@ class MemoriaSemantica:
         if not trechos:
             return 0
 
-        vetores, origem = self.roteador.vetorizar_com_origem(
+        # 'backend_usado' e quem vetorizou; 'origem' e o tipo do documento
+        # (entrega, arquivo, nota). Com o mesmo nome, a coluna origem gravava
+        # o backend e nao dava para apagar os trechos de uma nota pela origem.
+        vetores, backend_usado = self.roteador.vetorizar_com_origem(
             trechos, backend=self.backend, modelo=self.modelo
         )
-        assinatura = self._registrar_assinatura(origem)
+        assinatura = self._registrar_assinatura(backend_usado)
         agora = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
         with self._lock:
@@ -197,6 +212,54 @@ class MemoriaSemantica:
             )
             self._conn.commit()
         return len(trechos)
+
+    def indexar_se_mudou(self, texto: str, *, origem: str, referencia: str, **extras) -> int | None:
+        """Indexa o documento so se o conteudo mudou desde a ultima vez.
+
+        Devolve None quando nada mudou. Um documento igual indexado por OUTRO
+        modelo conta como mudado: os vetores antigos ficaram invisiveis para a
+        busca atual.
+        """
+        resumo = hashlib.sha256(texto.encode("utf-8")).hexdigest()
+        with self._lock:
+            linha = self._conn.execute(
+                "SELECT resumo, modelo FROM documentos WHERE origem=? AND referencia=?",
+                (origem, referencia),
+            ).fetchone()
+        if linha and linha["resumo"] == resumo and linha["modelo"] == self.assinatura:
+            return None
+
+        trechos = self.indexar(texto, origem=origem, referencia=referencia, **extras)
+        with self._lock:
+            self._conn.execute(
+                """INSERT OR REPLACE INTO documentos
+                   (origem, referencia, resumo, modelo, atualizado_em) VALUES (?,?,?,?,?)""",
+                (origem, referencia, resumo, self.assinatura,
+                 datetime.now(timezone.utc).isoformat(timespec="seconds")),
+            )
+            self._conn.commit()
+        return trechos
+
+    def documentos(self, origem: str) -> list[str]:
+        """Referencias dos documentos registrados por indexar_se_mudou()."""
+        with self._lock:
+            linhas = self._conn.execute(
+                "SELECT referencia FROM documentos WHERE origem=? ORDER BY referencia", (origem,)
+            ).fetchall()
+        return [r["referencia"] for r in linhas]
+
+    def remover_documento(self, origem: str, referencia: str) -> int:
+        """Tira um documento do indice. Devolve quantos trechos sairam."""
+        with self._lock:
+            cur = self._conn.execute(
+                f"DELETE FROM vetores WHERE origem=? AND referencia LIKE ? ESCAPE '{ESCAPE_LIKE}'",
+                (origem, _padrao_de_referencia(referencia)),
+            )
+            self._conn.execute(
+                "DELETE FROM documentos WHERE origem=? AND referencia=?", (origem, referencia)
+            )
+            self._conn.commit()
+            return cur.rowcount
 
     def indexar_entregaveis(self, memoria_corporativa, projeto: str) -> int:
         """Indexa todos os entregaveis de um projeto ja gravados no SQLite."""
@@ -331,6 +394,9 @@ class MemoriaSemantica:
                 cur = self._conn.execute("DELETE FROM vetores WHERE projeto=?", (projeto,))
             else:
                 cur = self._conn.execute("DELETE FROM vetores")
+                # sem isto, indexar_se_mudou() acharia que as notas ja estao no
+                # indice e nunca mais as reindexaria
+                self._conn.execute("DELETE FROM documentos")
             self._conn.commit()
             return cur.rowcount
 

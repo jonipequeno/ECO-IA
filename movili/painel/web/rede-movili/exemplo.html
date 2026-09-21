@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="escuro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rede Movili: exemplo</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="bundle.css">
+<style>
+  html, body { height: 100%; margin: 0; }
+  #app { height: 100vh; height: 100dvh; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="bundle.js"></script>
+<script>
+  /* A tela completa em modo demonstração: duas propagações reais em alternância, sem servidor. */
+  var tela = MoviliRede.Tela({ demo: true });
+  document.getElementById('app').appendChild(tela);
+</script>
+</body>
+</html>

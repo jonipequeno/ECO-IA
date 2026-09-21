@@ -18,6 +18,8 @@ def config(tmp_path):
     cfg = carregar(backend_forcado="simulado")
     cfg.caminho_db = str(tmp_path / "teste.db")
     cfg.workspace = str(tmp_path / "workspace")
+    # o padrao aponta para o cofre de verdade, relativo ao diretorio atual
+    cfg.obsidian = str(tmp_path / "cofre")
     return cfg
 
 

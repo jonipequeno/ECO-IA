@@ -93,6 +93,18 @@ def test_reindexar_a_mesma_referencia_nao_duplica(semantica):
     assert semantica.estatisticas()["trechos"] == primeiro
 
 
+def test_coluna_origem_guarda_o_tipo_do_documento_e_nao_o_backend(semantica):
+    """indexar() reaproveitava o nome 'origem' para o backend que vetorizou.
+
+    A coluna gravava 'simulado'/'ollama' em vez de 'entrega'/'arquivo'/'nota',
+    e remover um documento pela origem dele nao apagava nada.
+    """
+    semantica.indexar("texto qualquer " * 10, origem="nota", referencia="n1")
+    origens = {linha[0] for linha in semantica._conn.execute("SELECT origem FROM vetores")}
+    assert origens == {"nota"}
+    assert semantica.remover_documento("nota", "n1") > 0
+
+
 @pytest.mark.parametrize("vizinha,alvo", [
     ("docs/aXb.md", "docs/a_b.md"),      # '_' casa qualquer caractere no LIKE
     ("relatorio-2026", "relatorio%2026"),  # '%' casa qualquer sequencia

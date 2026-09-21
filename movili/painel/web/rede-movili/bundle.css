@@ -1,0 +1,172 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap');
+
+/* Rede Movili — obsidiana bioluminescente. Tokens vêm de tokens.css (var(--…)). */
+:root { color-scheme: dark; }
+[data-theme="claro"] { color-scheme: light; }
+body { margin: 0; background: var(--fundo); color: var(--texto); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+.leitura, .leitura-destaque { font-variant-numeric: tabular-nums; }
+.mr-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.mr-suave { color: var(--texto-suave); }
+
+/* ---------- Vidro: tudo que flutua sobre a rede ---------- */
+.mr-vidro, .mr-cabecalho, .mr-linha, .mr-painel, .mr-dica, .mr-rede-controles {
+  background: var(--vidro);
+  -webkit-backdrop-filter: blur(var(--desfoque-vidro)) saturate(1.4);
+  backdrop-filter: blur(var(--desfoque-vidro)) saturate(1.4);
+}
+
+/* ---------- Glifos e selos ---------- */
+.mr-glifo { flex: none; display: block; overflow: visible; }
+.mr-selo { display: inline-flex; align-items: center; gap: var(--espaco-1); color: var(--texto); white-space: nowrap; }
+.mr-selo[data-compacto] { gap: 0; }
+.mr-prioridade { display: inline-flex; align-items: center; gap: var(--espaco-1); color: var(--texto); white-space: nowrap; }
+.mr-prioridade svg { flex: none; display: block; }
+.mr-prioridade .mr-barra-on { fill: var(--texto); }
+.mr-prioridade .mr-barra-off { fill: none; stroke: var(--borda-controle); stroke-width: 1; }
+
+/* ---------- Medidor de ativação ---------- */
+.mr-medidor { display: grid; gap: 6px; min-width: 160px; }
+.mr-medidor-linha { display: flex; justify-content: space-between; align-items: baseline; gap: var(--espaco-2); }
+.mr-medidor-trilho { position: relative; height: 6px; margin: 4px 0 2px; background: var(--superficie-2); border-radius: var(--raio-pilula); box-shadow: inset 0 0 0 1px var(--borda-controle); }
+.mr-medidor-valor { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--raio-pilula); background: var(--neuronio-contorno); transition: width var(--transicao-ui) var(--curva-saida); }
+.mr-medidor[data-acima] .mr-medidor-valor { background: var(--ativacao); box-shadow: 0 0 10px color-mix(in srgb, var(--ativacao) 45%, transparent); }
+.mr-medidor-limiar { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--texto); border-radius: 1px; }
+
+/* ---------- Botões ---------- */
+.mr-botao { appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--espaco-2); height: 32px; padding: 0 var(--espaco-3); border-radius: var(--raio-2); border: 1px solid var(--borda-controle); background: var(--superficie); color: var(--texto); cursor: pointer; white-space: nowrap; }
+.mr-botao:hover { background: var(--superficie-2); }
+.mr-botao[data-primario] { background: var(--acento); border-color: var(--acento); color: var(--sobre-acento); font-weight: 600; box-shadow: var(--brilho-acento); }
+.mr-botao[data-primario]:hover { filter: brightness(1.08); }
+.mr-botao[aria-pressed="true"] { background: var(--superficie-2); border-color: var(--acento); box-shadow: var(--brilho-acento); }
+.mr-botao:disabled { cursor: default; opacity: .6; }
+.mr-botao-icone { appearance: none; display: inline-grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0; border-radius: var(--raio-2); border: 1px solid transparent; background: transparent; color: var(--texto); cursor: pointer; }
+.mr-botao-icone:hover { background: var(--superficie-2); border-color: var(--borda-controle); }
+.mr-botao-icone svg { display: block; }
+.mr-botao:focus-visible, .mr-botao-icone:focus-visible, .mr-chip:focus-visible, .mr-campo:focus-visible, .mr-no:focus-visible, .mr-cabeca:focus-visible { outline: 2px solid transparent; box-shadow: var(--anel-foco); }
+
+/* ---------- Filtro por tipo: pílulas, como etiquetas de um grafo de notas ---------- */
+.mr-filtro { display: flex; align-items: center; gap: var(--espaco-2); padding: var(--espaco-2) var(--espaco-4); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.mr-filtro::-webkit-scrollbar { display: none; }
+.mr-chip { --tipo-cor: var(--acento); appearance: none; display: inline-flex; align-items: center; gap: 6px; flex: none; height: 28px; padding: 0 12px 0 10px; border-radius: var(--raio-pilula); border: 1px solid color-mix(in srgb, var(--tipo-cor) 45%, var(--borda-controle)); background: var(--vidro); -webkit-backdrop-filter: blur(var(--desfoque-vidro)); backdrop-filter: blur(var(--desfoque-vidro)); color: var(--texto); cursor: pointer; white-space: nowrap; box-shadow: 0 0 14px color-mix(in srgb, var(--tipo-cor) 22%, transparent); }
+.mr-chip:hover { background: var(--superficie-2); }
+.mr-chip[aria-pressed="false"] { background: transparent; border: 1px dashed var(--borda-controle); color: var(--texto-suave); box-shadow: none; }
+.mr-chip[aria-pressed="false"] .mr-chip-rotulo { text-decoration: line-through; text-decoration-thickness: 1px; }
+.mr-chip[aria-pressed="false"] .mr-glifo { opacity: .45; }
+.mr-chip[data-todos] { color: var(--texto-suave); border: 1px solid var(--borda-controle); box-shadow: none; }
+[data-theme="claro"] .mr-chip { box-shadow: none; }
+
+/* ---------- Dica ---------- */
+.mr-dica { position: absolute; left: 0; top: 0; z-index: var(--z-dica); box-sizing: border-box; width: 256px; max-width: calc(100% - 16px); padding: var(--espaco-3); border-radius: var(--raio-2); color: var(--texto); box-shadow: var(--sombra-flutuante); pointer-events: none; }
+.mr-dica[data-estatica] { position: relative; }
+.mr-dica[hidden] { display: none; }
+.mr-dica-cab { display: grid; gap: 2px; margin-bottom: var(--espaco-2); }
+.mr-dica-nome { font-weight: 600; }
+.mr-dica-linhas { display: grid; grid-template-columns: auto 1fr; column-gap: var(--espaco-3); row-gap: var(--espaco-1); align-items: baseline; margin: 0; }
+.mr-dica-linhas dt { color: var(--texto-suave); }
+.mr-dica-linhas dd { margin: 0; text-align: right; justify-self: end; }
+.mr-dica .mr-medidor { margin-top: var(--espaco-2); }
+.mr-dica-trocas { list-style: none; margin: var(--espaco-2) 0 0; padding: var(--espaco-2) 0 0; border-top: 1px solid var(--borda); display: grid; gap: var(--espaco-2); }
+.mr-dica-trocas li { display: grid; grid-template-columns: auto 1fr; gap: var(--espaco-2); align-items: start; }
+.mr-dica-trocas .mr-glifo { margin-top: 3px; }
+.mr-trunca { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.mr-min0 { min-width: 0; }
+.mr-duas-linhas { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-width: 0; }
+
+/* ---------- Ficha do agente: vidro flutuante; folha inferior no celular ---------- */
+.mr-painel { box-sizing: border-box; display: flex; flex-direction: column; width: var(--largura-painel); max-width: 100%; height: 100%; min-height: 0; color: var(--texto); border-radius: var(--raio-3); box-shadow: var(--sombra-flutuante); z-index: var(--z-painel); overflow: hidden; }
+.mr-painel[hidden] { display: none; }
+.mr-painel-alca { display: none; width: 36px; height: 4px; margin: var(--espaco-2) auto 0; border-radius: var(--raio-pilula); background: var(--borda-controle); }
+.mr-painel-cab { display: grid; grid-template-columns: 1fr auto; gap: var(--espaco-1) var(--espaco-2); padding: var(--espaco-4) var(--espaco-4) var(--espaco-3); border-bottom: 1px solid var(--borda); }
+.mr-painel-cab .titulo { margin: 0; }
+.mr-painel-cab p { margin: 0; }
+.mr-painel-corpo { flex: 1; min-height: 0; overflow-y: auto; padding: var(--espaco-4); display: grid; align-content: start; gap: var(--espaco-5); }
+.mr-painel-bloco { display: grid; gap: var(--espaco-2); }
+.mr-painel-bloco > h3 { margin: 0; color: var(--texto-suave); }
+.mr-leitura-grande { display: flex; align-items: baseline; gap: var(--espaco-2); }
+.mr-trafego { display: flex; align-items: center; gap: var(--espaco-2); min-height: 16px; }
+.mr-trafego:empty { display: none; }
+.mr-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espaco-2); }
+.mr-lista-sinapse { display: grid; grid-template-columns: minmax(0, 1fr) 64px 40px; align-items: center; gap: var(--espaco-2); }
+.mr-peso-trilho { position: relative; height: 4px; border-radius: var(--raio-pilula); background: var(--superficie-2); box-shadow: inset 0 0 0 1px var(--borda); }
+.mr-peso-valor { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--raio-pilula); background: var(--sinapse-forte); }
+.mr-lista-troca { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px var(--espaco-2); align-items: start; }
+.mr-lista-troca .mr-glifo { margin-top: 5px; }
+.mr-lista-troca .corpo { margin: 0; }
+.mr-painel-composer { display: grid; gap: var(--espaco-2); padding: var(--espaco-3) var(--espaco-4) var(--espaco-4); border-top: 1px solid var(--borda); }
+.mr-painel-composer label { color: var(--texto-suave); }
+.mr-painel-composer-linha { display: flex; gap: var(--espaco-2); align-items: flex-end; }
+.mr-campo { box-sizing: border-box; flex: 1; min-width: 0; min-height: 36px; max-height: 120px; padding: 7px var(--espaco-3); border: 1px solid var(--borda-controle); border-radius: var(--raio-1); background: var(--superficie-2); color: var(--texto); resize: none; }
+.mr-campo::placeholder { color: var(--texto-suave); opacity: 1; }
+.mr-painel-composer .mr-botao { height: 36px; }
+.mr-painel-erro { margin: 0; color: var(--erro); }
+.mr-painel-erro[hidden] { display: none; }
+.mr-painel[data-modo="folha"] { width: 100%; height: auto; max-height: var(--altura-folha); box-shadow: var(--sombra-folha); }
+.mr-painel[data-modo="folha"] .mr-painel-alca { display: block; }
+
+/* ---------- Cabeçalho ---------- */
+.mr-cabecalho { box-sizing: border-box; container-type: inline-size; display: flex; align-items: center; gap: var(--espaco-4); height: var(--altura-cabecalho); padding: 0 var(--espaco-2) 0 var(--espaco-4); color: var(--texto); border-bottom: 1px solid var(--borda); min-width: 0; }
+.mr-marca { display: inline-flex; align-items: baseline; gap: 6px; flex: none; }
+.mr-marca b { font-weight: 600; letter-spacing: 0.01em; }
+.mr-estado { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.mr-estado-ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--sucesso); flex: none; }
+.mr-estado[data-estado="ao-vivo"] { color: var(--sucesso); }
+.mr-estado[data-estado="ao-vivo"] .mr-estado-ponto { box-shadow: 0 0 10px var(--sucesso); }
+.mr-estado[data-estado="reproducao"], .mr-estado[data-estado="pausado"] { color: var(--atencao); }
+.mr-estado[data-estado="reproducao"] .mr-estado-ponto, .mr-estado[data-estado="pausado"] .mr-estado-ponto { background: transparent; box-shadow: inset 0 0 0 2px var(--atencao); border-radius: 1px; }
+.mr-estado[data-estado="desconectado"] { color: var(--erro); }
+.mr-estado[data-estado="desconectado"] .mr-estado-ponto { background: transparent; box-shadow: inset 0 0 0 2px var(--erro); }
+.mr-contadores { flex: 1; min-width: 0; display: flex; gap: var(--espaco-3); color: var(--texto-suave); overflow: hidden; white-space: nowrap; }
+.mr-contadores b { color: var(--texto); font-weight: 400; }
+.mr-cabecalho .mr-botao-icone { margin-left: auto; }
+@container (max-width: 600px) { .mr-contador-sec { display: none; } }
+@container (max-width: 440px) { .mr-cabecalho { gap: var(--espaco-3); } .mr-cabecalho-tempo { display: none; } .mr-marca span { display: none; } }
+
+/* ---------- Linha do tempo ---------- */
+.mr-linha { box-sizing: border-box; display: flex; align-items: center; gap: var(--espaco-1); height: var(--altura-linha-tempo); padding: 0 var(--espaco-2); color: var(--texto); border-top: 1px solid var(--borda); min-width: 0; }
+.mr-trilho { position: relative; flex: 1; min-width: 80px; height: 32px; margin: 0 var(--espaco-2); cursor: pointer; touch-action: none; }
+.mr-trilho-base { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--borda-controle); }
+.mr-trilho-passado { position: absolute; left: 0; top: 50%; height: 2px; margin-top: -0.5px; border-radius: var(--raio-pilula); background: var(--acento); box-shadow: var(--brilho-acento); }
+.mr-marca-evento { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; pointer-events: none; }
+.mr-marca-evento[data-apagado] { opacity: var(--opacidade-apagado); }
+.mr-cabeca { position: absolute; top: 2px; bottom: 2px; width: 14px; margin-left: -7px; border: 0; padding: 0; background: transparent; cursor: grab; border-radius: var(--raio-1); }
+.mr-cabeca::before { content: ""; position: absolute; left: 6px; top: 0; bottom: 0; width: 2px; background: var(--acento); border-radius: 1px; }
+.mr-cabeca::after { content: ""; position: absolute; left: 2px; top: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--acento); box-shadow: var(--brilho-acento); }
+.mr-linha-tempo { flex: none; min-width: 64px; text-align: right; color: var(--texto-suave); }
+.mr-linha .mr-botao { height: 28px; padding: 0 var(--espaco-3); border-radius: var(--raio-pilula); }
+
+/* ---------- Rede ---------- */
+.mr-rede { position: relative; width: 100%; height: 100%; min-height: 220px; overflow: hidden; background: var(--fundo); touch-action: none; -webkit-tap-highlight-color: transparent; cursor: grab; }
+.mr-rede[data-arrastando] { cursor: grabbing; }
+.mr-rede > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mr-rede-nos { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.mr-no { position: absolute; left: 0; top: 0; box-sizing: border-box; padding: 0; margin: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; pointer-events: auto; touch-action: none; will-change: transform; }
+.mr-rede[data-arrastando] .mr-no { cursor: grabbing; }
+.mr-rede-controles { position: absolute; right: var(--margem-flutuante); top: var(--margem-flutuante); z-index: var(--z-controles); display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: var(--raio-3); border: 1px solid var(--borda); box-shadow: var(--sombra-flutuante); }
+.mr-rede-controles .mr-botao-icone { width: 32px; height: 32px; }
+
+/* ---------- Canvas avulsos (Neuronio, Sinapse, Pulso) ---------- */
+.mr-amostras { display: flex; flex-wrap: wrap; gap: var(--espaco-4) var(--espaco-5); align-items: flex-end; padding: var(--espaco-4); }
+.mr-amostra { display: grid; justify-items: center; gap: var(--espaco-1); }
+.mr-amostra canvas { display: block; }
+.mr-amostra figcaption { text-align: center; }
+.mr-amostra figure, figure.mr-amostra { margin: 0; }
+
+/* ---------- Tela: a rede em tela cheia, o resto é vidro por cima ---------- */
+.mr-tela { container-type: inline-size; position: relative; box-sizing: border-box; width: 100%; height: 100%; min-height: 480px; background: var(--fundo); color: var(--texto); overflow: hidden; isolation: isolate; }
+.mr-tela > .mr-area { position: absolute; inset: 0; }
+.mr-tela > .mr-cabecalho { position: absolute; left: 0; right: 0; top: 0; z-index: var(--z-controles); }
+.mr-tela > .mr-linha { position: absolute; left: 0; right: 0; bottom: 0; z-index: var(--z-controles); }
+.mr-tela > .mr-filtro { position: absolute; left: 0; right: 0; bottom: calc(var(--altura-linha-tempo) + 4px); z-index: var(--z-controles); }
+.mr-tela > .mr-painel { position: absolute; top: calc(var(--altura-cabecalho) + var(--margem-flutuante)); right: var(--margem-flutuante); bottom: calc(var(--altura-linha-tempo) + var(--margem-flutuante)); height: auto; }
+.mr-tela[data-painel] > .mr-filtro { right: calc(var(--largura-painel) + var(--margem-flutuante) * 2); }
+.mr-tela[data-painel] .mr-rede-controles { right: calc(var(--largura-painel) + var(--margem-flutuante) * 2); }
+@container (max-width: 719px) {
+  .mr-tela > .mr-painel[data-modo="auto"] { top: auto; left: 8px; right: 8px; bottom: calc(var(--altura-linha-tempo) + 8px); width: auto; max-height: var(--altura-folha); box-shadow: var(--sombra-folha); }
+  .mr-tela > .mr-painel[data-modo="auto"] .mr-painel-alca { display: block; }
+  .mr-tela[data-painel] > .mr-filtro { display: none; }
+  .mr-tela[data-painel] .mr-rede-controles { right: var(--margem-flutuante); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mr-medidor-valor { transition: none; }
+}

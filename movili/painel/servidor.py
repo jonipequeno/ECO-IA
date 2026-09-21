@@ -1,8 +1,9 @@
 """Painel web: ver a Movili trabalhando em tempo real.
 
-Serve uma pagina unica com o organograma, o trafego do barramento ao vivo
-(via Server-Sent Events) e um formulario para disparar fluxos, reunioes e
-perguntas a um funcionario.
+A pagina principal e a Rede Movili: a empresa como uma rede neural viva, com
+o trafego do barramento correndo pelas sinapses (kit em web/rede-movili/,
+dados em painel/rede.py). A pagina anterior - organograma, feed completo das
+mensagens e disparo de fluxos e reunioes - segue em /classico.
 
 Usa apenas a biblioteca padrao - nenhuma dependencia nova, mesma escolha da
 ponte do OpenJarvis.
@@ -11,11 +12,13 @@ ponte do OpenJarvis.
 from __future__ import annotations
 
 import json
+import mimetypes
 import queue
 import threading
 import time
 import traceback
 import uuid
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -28,11 +31,21 @@ from ..core.mensagem import Mensagem
 from ..core.orquestrador import Ecossistema
 from ..llm.base import LLMIndisponivel
 from ..rotinas.agenda import Agenda
+from . import rede
 
 WEB = Path(__file__).parent / "web"
+KIT = WEB / "rede-movili"
 LIMITE_CORPO = 512 * 1024
 MAX_EVENTOS = 400          # historico mantido para quem abre o painel depois
 MAX_FILA_CLIENTE = 500     # eventos enfileirados por aba aberta
+MAX_EVENTOS_REDE = 1000    # o que uma aba que caiu consegue recuperar ao voltar
+BATIMENTO_REDE = 15        # segundos entre comentarios de heartbeat no SSE da rede
+ENCERRANDO = {"evento": "encerrando"}
+TIPOS_KIT = {
+    ".js": "application/javascript", ".css": "text/css", ".json": "application/json",
+    ".html": "text/html", ".md": "text/markdown", ".ts": "text/plain",
+    ".woff2": "font/woff2", ".woff": "font/woff", ".svg": "image/svg+xml",
+}
 
 
 class TarefaInvalida(ValueError):
@@ -83,6 +96,16 @@ class Central:
         self._lock = threading.RLock()
         self._fila: queue.Queue[str | None] = queue.Queue()
         self._encerrando = False
+        # Fluxo da Rede Movili: separado do /api/eventos porque tem id
+        # incremental (Last-Event-ID) e so carrega o que a rede desenha.
+        self._rede: deque[tuple[int, dict[str, Any]]] = deque(maxlen=MAX_EVENTOS_REDE)
+        self._seq_rede = 0
+        self._assinantes_rede: list[queue.Queue] = []
+        # Aba que disparou a tarefa em execucao: ela ja acendeu a onda sozinha
+        # ao enviar, entao ignora o estimulo que volta com o proprio id.
+        self._cliente_atual: str | None = None
+        self.pesos = rede.ArquivoPesos(Path(eco.config.caminho_db).parent / "rede-pesos.json")
+
         self._worker = threading.Thread(target=self._processar, daemon=True)
         self._worker.start()
         self.agenda = Agenda(eco)
@@ -90,6 +113,12 @@ class Central:
 
     # --- eventos ------------------------------------------------------
     def _do_barramento(self, mensagem: Mensagem) -> None:
+        convertido = rede.evento_da_mensagem(mensagem, self.eco.agentes)
+        if convertido is not None:
+            if convertido["acao"] == "estimular" and self._cliente_atual:
+                convertido["cliente"] = self._cliente_atual
+            self.emitir_rede(convertido)
+
         agente = self.eco.agentes.get(mensagem.remetente)
         self.emitir("mensagem", {
             "id": mensagem.id,
@@ -128,6 +157,44 @@ class Central:
             if fila in self._assinantes:
                 self._assinantes.remove(fila)
 
+    # --- rede ---------------------------------------------------------
+    def emitir_rede(self, evento: dict[str, Any]) -> int:
+        """Publica um evento da rede com id incremental. Devolve o id."""
+        with self._lock:
+            self._seq_rede += 1
+            item = (self._seq_rede, evento)
+            self._rede.append(item)
+            assinantes = list(self._assinantes_rede)
+        for fila in assinantes:
+            try:
+                fila.put_nowait(item)
+            except queue.Full:
+                pass
+        return item[0]
+
+    def assinar_rede(self, ultimo_id: int | None) -> queue.Queue:
+        """Assina a rede. Com `ultimo_id`, reenvia o que a aba perdeu enquanto caiu.
+
+        Sem ele (aba nova), nada do passado e reenviado: a tela nao recebe
+        horario e poria o trafego antigo no agora da rede.
+        """
+        fila: queue.Queue = queue.Queue(maxsize=MAX_FILA_CLIENTE)
+        with self._lock:
+            if ultimo_id is not None:
+                for item in self._rede:
+                    if item[0] > ultimo_id:
+                        try:
+                            fila.put_nowait(item)
+                        except queue.Full:
+                            break
+            self._assinantes_rede.append(fila)
+        return fila
+
+    def desassinar_rede(self, fila: queue.Queue) -> None:
+        with self._lock:
+            if fila in self._assinantes_rede:
+                self._assinantes_rede.remove(fila)
+
     # --- tarefas ------------------------------------------------------
     def agendar(self, tipo: str, descricao: str, **extras: Any) -> Tarefa:
         if self._encerrando:
@@ -151,6 +218,7 @@ class Central:
                 continue
             tarefa.estado = "executando"
             self.emitir("tarefa", tarefa.to_dict())
+            self._cliente_atual = tarefa.__dict__.get("extras", {}).get("cliente")
             try:
                 self._executar(tarefa)
                 tarefa.estado = "concluida"
@@ -163,6 +231,7 @@ class Central:
                 tarefa.estado = "erro"
                 tarefa.erro = f"{type(exc).__name__}: {exc}"
                 traceback.print_exc()
+            self._cliente_atual = None
             tarefa.concluida_em = _agora()
             self.emitir("tarefa", tarefa.to_dict())
 
@@ -174,6 +243,13 @@ class Central:
             tarefa.projeto = "painel"
             tarefa.resultado = {"entrega": r.entrega, "agente": r.agente}
             return
+
+        # Fluxo, reuniao e triagem entram pela diretoria: e ela quem distribui
+        # as etapas (o remetente padrao do delegar e o orquestrador).
+        if tarefa.tipo in {"fluxo", "reuniao", "atender"}:
+            self.emitir_rede({"acao": "estimular", "dados": {
+                "no": quadro.ORQUESTRADOR, "texto": rede.resumir(extras.get("texto", "")),
+            }})
 
         if tarefa.tipo == "fluxo":
             resultado = self.eco.executar_fluxo(
@@ -225,6 +301,12 @@ class Central:
                 except queue.Full:
                     pass
             self._assinantes.clear()
+            for fila in self._assinantes_rede:
+                try:
+                    fila.put_nowait(ENCERRANDO)
+                except queue.Full:
+                    pass
+            self._assinantes_rede.clear()
         return parou
 
     # --- leitura ------------------------------------------------------
@@ -319,6 +401,17 @@ class _Handler(BaseHTTPRequestHandler):
         rota = self.path.split("?")[0].rstrip("/") or "/"
         if rota in {"/", "/index.html"}:
             self._pagina()
+        elif rota in {"/classico", "/classico.html"}:
+            self._pagina("classico.html")
+        elif rota.startswith("/rede-movili/"):
+            self._estatico(rota[len("/rede-movili/"):])
+        elif rota == "/api/rede/topologia":
+            eco = self.central.eco
+            self._json(200, rede.topologia(lambda i: eco.config.modelo_do_agente(i)[1]))
+        elif rota == "/api/rede/eventos":
+            self._stream_rede()
+        elif rota == "/api/rede/pesos":
+            self._json(200, self.central.pesos.carregar(quadro.REGISTRO))
         elif rota == "/api/estado":
             self._json(200, self.central.estado())
         elif rota == "/api/backends":
@@ -335,7 +428,11 @@ class _Handler(BaseHTTPRequestHandler):
             self._erro(404, f"rota nao encontrada: {rota}")
 
     def do_POST(self) -> None:  # noqa: N802
-        if self.path.rstrip("/") != "/api/executar":
+        rota = self.path.split("?")[0].rstrip("/")
+        if rota == "/api/rede/pesos":
+            self._salvar_pesos()
+            return
+        if rota != "/api/executar":
             self._erro(404, f"rota nao encontrada: {self.path}")
             return
         corpo = self._corpo()
@@ -348,6 +445,7 @@ class _Handler(BaseHTTPRequestHandler):
         if not texto:
             self._erro(400, "informe o texto da demanda")
             return
+        cliente = str(corpo.get("cliente") or "")[:40] or None
 
         if tipo == "agente":
             agente = str(corpo.get("agente") or "")
@@ -356,7 +454,8 @@ class _Handler(BaseHTTPRequestHandler):
                 return
             perfil = self.central.eco.agente(agente).perfil
             tarefa = self.central.agendar(
-                "agente", f"{perfil.nome}: {texto[:60]}", agente=agente, texto=texto
+                "agente", f"{perfil.nome}: {texto[:60]}", agente=agente, texto=texto,
+                cliente=cliente,
             )
         elif tipo == "fluxo":
             nome = str(corpo.get("fluxo") or "")
@@ -377,11 +476,29 @@ class _Handler(BaseHTTPRequestHandler):
 
         self._json(202, tarefa.to_dict())
 
+    def _salvar_pesos(self) -> None:
+        """Recebe rede.pesos() do navegador (a cada 60 s e no pagehide, via sendBeacon)."""
+        corpo = self._corpo()
+        if corpo is None:
+            self._erro(400, "corpo JSON ausente ou invalido")
+            return
+        try:
+            pesos = rede.validar_pesos(corpo, quadro.REGISTRO)
+        except ValueError as exc:
+            self._erro(400, str(exc))
+            return
+        try:
+            self.central.pesos.salvar(pesos)
+        except OSError as exc:
+            self._erro(500, f"nao foi possivel gravar os pesos: {exc}")
+            return
+        self._json(200, {"salvos": len(pesos)})
+
     # --- entrega ------------------------------------------------------
-    def _pagina(self) -> None:
-        arquivo = WEB / "index.html"
+    def _pagina(self, nome: str = "index.html") -> None:
+        arquivo = WEB / nome
         if not arquivo.is_file():
-            self._erro(500, "painel/web/index.html nao encontrado no pacote")
+            self._erro(500, f"painel/web/{nome} nao encontrado no pacote")
             return
         dados = arquivo.read_bytes()
         self.send_response(200)
@@ -389,6 +506,69 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(dados)))
         self.end_headers()
         self.wfile.write(dados)
+
+    def _estatico(self, relativo: str) -> None:
+        """Serve um arquivo do kit Rede Movili, sem deixar sair da pasta dele."""
+        raiz = KIT.resolve()
+        try:
+            alvo = (raiz / relativo).resolve()
+            alvo.relative_to(raiz)
+        except (ValueError, OSError):
+            self._erro(404, "arquivo nao encontrado")
+            return
+        if not alvo.is_file():
+            self._erro(404, "arquivo nao encontrado")
+            return
+        # No Windows o mimetypes le o registro, que as vezes diz text/plain
+        # para .js - e o navegador recusa o script. Os tipos do kit sao fixos.
+        tipo = TIPOS_KIT.get(alvo.suffix.lower()) or mimetypes.guess_type(alvo.name)[0] \
+            or "application/octet-stream"
+        if tipo.startswith("text/") or tipo in {"application/javascript", "application/json"}:
+            tipo += "; charset=utf-8"
+        dados = alvo.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", tipo)
+        self.send_header("Content-Length", str(len(dados)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(dados)
+
+    def _stream_rede(self) -> None:
+        """SSE da Rede Movili: um evento JSON por mensagem, com id para retomar.
+
+        O EventSource devolve o ultimo id recebido no cabecalho Last-Event-ID
+        quando reconecta; o que a aba perdeu no intervalo e reenviado.
+        """
+        try:
+            ultimo = int(self.headers.get("Last-Event-ID") or "")
+        except ValueError:
+            ultimo = None
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.end_headers()
+
+        fila = self.central.assinar_rede(ultimo)
+        try:
+            self.wfile.write(b"retry: 3000\n: conectado\n\n")
+            self.wfile.flush()
+            while True:
+                try:
+                    item = fila.get(timeout=BATIMENTO_REDE)
+                except queue.Empty:
+                    bloco = ": batimento\n\n"
+                else:
+                    if item is ENCERRANDO:
+                        return
+                    ident, evento = item
+                    bloco = f"id: {ident}\ndata: {json.dumps(evento, ensure_ascii=False)}\n\n"
+                self.wfile.write(bloco.encode("utf-8"))
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass  # aba fechada
+        finally:
+            self.central.desassinar_rede(fila)
 
     def _stream(self) -> None:
         """Server-Sent Events: o painel recebe cada mensagem do barramento."""
