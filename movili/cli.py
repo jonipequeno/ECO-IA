@@ -403,6 +403,16 @@ def cmd_ponte(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_demo(args: argparse.Namespace) -> int:
+    from .demo import Demo
+
+    eco = _montar(args)
+    try:
+        return Demo(eco, rapido=args.rapido).rodar()
+    finally:
+        eco.encerrar()
+
+
 def cmd_rotinas(args: argparse.Namespace) -> int:
     from .rotinas import catalogo
     from .rotinas.agenda import Agenda
@@ -507,6 +517,7 @@ def construir_parser() -> argparse.ArgumentParser:
         epilog=textwrap.dedent(
             """
             exemplos:
+              movili demo                    # comeca por aqui: prova que tudo esta de pe
               movili status
               movili equipe --detalhe financeiro
               movili modelos --grupo codigo
@@ -619,6 +630,11 @@ def construir_parser() -> argparse.ArgumentParser:
     s.add_argument("--porta", type=int, default=8123)
     s.add_argument("--frases", type=int, default=6)
     s.set_defaults(func=cmd_ponte)
+
+    s = sub.add_parser("demo", help="passeio guiado: prova que o ecossistema esta de pe")
+    s.add_argument("--rapido", action="store_true",
+                   help="fluxo de 5 etapas em vez de 12 - util em maquina modesta")
+    s.set_defaults(func=cmd_demo)
 
     s = sub.add_parser("rotinas", help="calendario interno: o que a empresa faz sozinha")
     s.add_argument("acao", nargs="?", default="listar",

@@ -1,11 +1,12 @@
 # Atalhos do ecossistema Movili.
-.PHONY: ajuda instalar modelos status equipe verificar teste memoria rotinas painel ponte jarvis api limpar
+.PHONY: ajuda demo instalar modelos status equipe verificar teste memoria rotinas painel ponte jarvis api limpar
 
 PY ?= python3
 
 ajuda:
 	@echo "Movili Tecnologia - ecossistema de agentes de IA"
 	@echo ""
+	@echo "  make demo         passeio guiado: prova que o ecossistema esta de pe"
 	@echo "  make instalar     instala dependencias e prepara o ambiente"
 	@echo "  make modelos      baixa os modelos essenciais do Ollama"
 	@echo "  make verificar    checa estrutura, backends e modelos faltando"
@@ -19,6 +20,9 @@ ajuda:
 	@echo "  make ponte        sobe a ponte OpenAI-compativel na porta 8123"
 	@echo "  make api          sobe a API HTTP na porta 8000"
 	@echo "  make limpar       remove caches e artefatos de execucao"
+
+demo:
+	$(PY) -m movili demo
 
 instalar:
 	./scripts/instalar.sh completo

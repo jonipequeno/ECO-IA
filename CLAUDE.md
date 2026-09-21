@@ -38,13 +38,14 @@ OpenAI.
 ## Comandos
 
 ```bash
-python -m pytest tests -q                          # suíte completa (~180 testes)
+python -m pytest tests -q                          # suíte completa (~227 testes)
 python -m pytest tests/test_rotinas.py -q          # um arquivo
 python -m pytest tests/test_rag.py::test_indexar_e_recuperar -q   # um teste
 python -m pytest tests -q -k "curinga or catch_up" # por nome
 
 python scripts/verificar.py                        # diagnóstico: estrutura, backends, modelos faltando
 python -m movili status                            # backends e roteamento (sai com 1 se nenhum backend real no ar)
+python -m movili --backend simulado demo           # passeio de ponta a ponta; teste de fumaça
 make ajuda                                         # todos os atalhos
 ```
 

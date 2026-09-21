@@ -11,6 +11,7 @@ ollama serve &                            # em outro terminal, de preferência
 
 movili status                             # confirma backend e modelos
 python scripts/verificar.py               # diagnóstico da estrutura
+movili demo                               # passeio guiado: prova que tudo está de pé
 movili equipe                             # conheça o time
 ```
 

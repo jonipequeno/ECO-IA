@@ -11,11 +11,25 @@ Modelo padrão de fábrica: **`qwen3:8b`**.
 ./scripts/instalar.sh completo
 ollama serve                                  # em outro terminal
 ./scripts/baixar_modelos.sh essenciais
-movili status
 
+movili demo                                   # começa por aqui: prova que tudo está de pé
+```
+
+O `demo` é um passeio guiado de seis passos — mostra o quadro, faz um funcionário
+trabalhar, roda um fluxo de 12 etapas, convoca uma reunião, prova que a empresa lembra de
+projetos anteriores e grava o relatório. **É o teste de fumaça do seu setup**: se ele passa,
+o ecossistema inteiro funciona.
+
+Sem backend nenhum ele também roda (`--backend simulado`), exercitando todo o encanamento e
+avisando em cada passo que a inteligência está desligada.
+
+Depois:
+
+```bash
 movili fluxo novo-projeto "app de logística para transportadora com 80 caminhões"
 movili reuniao "vale a pena entrar no mercado de saúde?" --rodadas 3
-movili jarvis                                 # conversa por voz com a empresa
+movili painel                                 # acompanhe ao vivo no navegador
+movili jarvis --palavra                       # conversa por voz, acorda pelo nome
 ```
 
 ---
@@ -459,6 +473,7 @@ Grupos de download disponíveis: `essenciais`, `leve`, `equilibrado`, `especiali
 ## Comandos
 
 ```bash
+movili demo [--rapido]                           # passeio guiado de ponta a ponta
 movili status                                    # backends, modelos e roteamento
 movili equipe [--detalhe <id>]                   # organograma e fichas
 movili modelos [--grupo <g>]                     # catálogo de modelos
@@ -594,7 +609,7 @@ Para GPU NVIDIA, descomente o bloco `deploy.resources` no `docker-compose.yml`.
 make teste        # ou: python -m pytest tests -q
 ```
 
-225 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
+227 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
 Cobrem estrutura do quadro, consistência dos fluxos (inclusive se uma etapa depende
 de alguém que ainda não atuou), roteamento de modelos, barramento, memória, sandbox
 das ferramentas, fallback entre backends, a memória semântica (fatiamento, cosseno

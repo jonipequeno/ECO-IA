@@ -591,8 +591,15 @@ class Ecossistema:
     # ------------------------------------------------------------------
     # Saida
     # ------------------------------------------------------------------
-    def salvar(self, resultado: ResultadoFluxo, destino: str | Path = "workspace") -> dict[str, Path]:
-        pasta = Path(destino) / resultado.projeto
+    def salvar(self, resultado: ResultadoFluxo, destino: str | Path | None = None) -> dict[str, Path]:
+        """Grava relatorio, JSON e o trafego do barramento.
+
+        Sem `destino`, usa o workspace configurado - nao um "workspace"
+        relativo ao diretorio atual. Painel, rotinas, API e demo chamam sem
+        destino, e escreviam ao lado de onde o processo foi iniciado,
+        ignorando MOVILI_WORKSPACE e config/modelos.yaml.
+        """
+        pasta = Path(destino or self.config.workspace) / resultado.projeto
         pasta.mkdir(parents=True, exist_ok=True)
         md = pasta / "relatorio.md"
         js = pasta / "resultado.json"

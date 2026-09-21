@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from movili import agentes as quadro
 from movili import fluxos as processos
 from movili.core.mensagem import Tipo
@@ -135,6 +137,25 @@ def test_atender_produz_relatorio_salvavel(eco_pequeno, tmp_path):
     assert caminhos["conversas"].is_file()
     md = caminhos["relatorio"].read_text(encoding="utf-8")
     assert "# " in md and "Briefing" in md
+
+
+def test_salvar_usa_o_workspace_configurado(eco_pequeno, tmp_path):
+    """Sem destino explicito, respeita a configuracao - nao './workspace'."""
+    destino = tmp_path / "meu-workspace"
+    eco_pequeno.config.workspace = str(destino)
+
+    resultado = eco_pequeno.atender("demanda de teste", maximo=1)
+    caminhos = eco_pequeno.salvar(resultado)
+
+    assert caminhos["relatorio"].is_file()
+    assert destino in caminhos["relatorio"].parents
+    assert not (Path.cwd() / "workspace" / resultado.projeto).exists()
+
+
+def test_salvar_com_destino_explicito_vence(eco_pequeno, tmp_path):
+    resultado = eco_pequeno.atender("outra demanda", maximo=1)
+    caminhos = eco_pequeno.salvar(resultado, tmp_path / "escolhido")
+    assert (tmp_path / "escolhido") in caminhos["relatorio"].parents
 
 
 def test_metricas_de_uso_por_agente(eco_pequeno):
