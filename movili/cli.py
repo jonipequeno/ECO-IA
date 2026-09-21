@@ -393,6 +393,77 @@ def cmd_ponte(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_rotinas(args: argparse.Namespace) -> int:
+    from .rotinas import catalogo
+    from .rotinas.agenda import Agenda
+
+    if args.acao == "listar":
+        _cabecalho("CALENDARIO INTERNO DA MOVILI")
+        for r in catalogo():
+            marca = " " if r.ativa else "x"
+            print(f"\n  [{marca}] {r.id:<20} {r.nome}")
+            print(f"      {r.agendamento.descrever()}")
+            print(f"      {textwrap.fill(r.descricao, 64, subsequent_indent='      ')}")
+            if r.participantes:
+                print(f"      participantes: {', '.join(r.participantes)}")
+        print('\n  Rodar uma agora:   movili rotinas rodar --rotina daily')
+        print('  Deixar de pe:      movili rotinas agenda')
+        return 0
+
+    eco = _montar(args)
+    try:
+        agenda = Agenda(eco)
+
+        if args.acao == "proximas":
+            _cabecalho("PROXIMOS COMPROMISSOS")
+            for rotina, quando in agenda.proximas(args.quantidade):
+                ultima = agenda.ultima_execucao(rotina.id)
+                print(f"\n  {quando:%d/%m %H:%M}  {rotina.nome}")
+                print(f"      {rotina.agendamento.descrever()}")
+                print(f"      ultima vez: {ultima:%d/%m/%Y %H:%M}" if ultima else
+                      "      ultima vez: nunca rodou")
+            return 0
+
+        if args.acao == "rodar":
+            if not args.rotina:
+                print("informe qual: movili rotinas rodar --rotina daily", file=sys.stderr)
+                return 1
+            _cabecalho(f"EXECUTANDO A ROTINA: {args.rotina}")
+            execucao = agenda.executar(args.rotina)
+            print(f"\n{execucao.estado} em {execucao.duracao_s:.1f}s")
+            if execucao.detalhe:
+                print(execucao.detalhe)
+            if execucao.erro:
+                print(f"ERRO: {execucao.erro}", file=sys.stderr)
+                return 1
+            if execucao.projeto:
+                print(f"projeto: {execucao.projeto}")
+            return 0
+
+        if args.acao == "agenda":
+            _cabecalho("AGENDA NO AR")
+            for rotina, quando in agenda.proximas(5):
+                print(f"  {quando:%d/%m %H:%M}  {rotina.nome}")
+            print(f"\n  Checando a cada {args.intervalo}s. Ctrl+C para encerrar.\n")
+            try:
+                agenda.rodar(
+                    intervalo=args.intervalo,
+                    ao_executar=lambda e: print(
+                        f"  [{e.fim:%H:%M}] {e.rotina}: {e.estado} {e.detalhe or e.erro}"
+                    ),
+                )
+            except KeyboardInterrupt:
+                agenda.parar()
+                print("\nagenda encerrada.")
+            return 0
+    except LLMIndisponivel as exc:
+        print(f"\nERRO: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        eco.encerrar()
+    return 0
+
+
 def cmd_painel(args: argparse.Namespace) -> int:
     from .painel.servidor import servir
 
@@ -436,6 +507,8 @@ def construir_parser() -> argparse.ArgumentParser:
               movili chat
               movili jarvis --diagnostico
               movili jarvis                  # conversa por voz
+              movili rotinas                 # calendario interno da empresa
+              movili rotinas rodar --rotina daily
               movili painel                  # acompanhe a empresa ao vivo no navegador
               movili ponte                   # expoe a empresa como API OpenAI
               movili memoria status
@@ -528,6 +601,15 @@ def construir_parser() -> argparse.ArgumentParser:
     s.add_argument("--porta", type=int, default=8123)
     s.add_argument("--frases", type=int, default=6)
     s.set_defaults(func=cmd_ponte)
+
+    s = sub.add_parser("rotinas", help="calendario interno: o que a empresa faz sozinha")
+    s.add_argument("acao", nargs="?", default="listar",
+                   choices=["listar", "proximas", "rodar", "agenda"])
+    s.add_argument("--rotina", help="id da rotina (acao 'rodar')")
+    s.add_argument("--quantidade", type=int, default=8, help="quantos compromissos mostrar")
+    s.add_argument("--intervalo", type=float, default=30.0,
+                   help="segundos entre checagens da agenda")
+    s.set_defaults(func=cmd_rotinas)
 
     s = sub.add_parser("painel", help="painel web: acompanhe a empresa trabalhando ao vivo")
     s.add_argument("--host", default="127.0.0.1")

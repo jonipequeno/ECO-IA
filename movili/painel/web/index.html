@@ -210,6 +210,11 @@
       <div id="tarefas"><div class="vazio">Nenhum trabalho disparado.</div></div>
     </section>
 
+    <section class="card" style="margin-bottom:14px">
+      <h2>Próximos compromissos</h2>
+      <div class="corpo" id="rotinas"><div class="vazio" style="padding:8px 0">—</div></div>
+    </section>
+
     <section class="card">
       <h2>Uso de modelo</h2>
       <div class="corpo" id="metricas"><div class="vazio" style="padding:8px 0">Sem chamadas ainda.</div></div>
@@ -251,6 +256,7 @@ async function carregar(){
   preencherSelects();
   pintarMemoria();
   pintarMetricas();
+  pintarRotinas();
 
   (estado.eventos || []).forEach(aplicar);
   (estado.tarefas || []).forEach(t => { tarefas.set(t.id, t); });
@@ -314,6 +320,23 @@ function pintarMetricas(){
         `<div class="metrica"><span>${esc(a)}</span><span>${v.chamadas} · ${(v.tokens_entrada+v.tokens_saida).toLocaleString("pt-BR")} tk</span></div>`
       ).join("")
     : `<div class="vazio" style="padding:8px 0">Sem chamadas ainda.</div>`;
+}
+
+function pintarRotinas(){
+  const lista = estado.rotinas || [];
+  $("#rotinas").innerHTML = lista.length
+    ? lista.map(r => `
+        <div class="metrica" title="${esc(r.descricao)}">
+          <span>${esc(r.nome)}</span><span>${quando(r.quando)}</span>
+        </div>`).join("")
+    : `<div class="vazio" style="padding:8px 0">Nenhuma rotina agendada.</div>`;
+}
+
+function quando(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleString("pt-BR", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"});
+  }catch(e){ return ""; }
 }
 
 async function pintarBackends(){
@@ -450,8 +473,8 @@ setInterval(pintarBackends, 30000);
 setInterval(async () => {
   try{
     const e = await (await fetch("/api/estado")).json();
-    estado.metricas = e.metricas; estado.memoria = e.memoria;
-    pintarMetricas(); pintarMemoria();
+    estado.metricas = e.metricas; estado.memoria = e.memoria; estado.rotinas = e.rotinas;
+    pintarMetricas(); pintarMemoria(); pintarRotinas();
   }catch(err){}
 }, 10000);
 </script>

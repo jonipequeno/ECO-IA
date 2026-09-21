@@ -127,6 +127,42 @@ importam com `movili memoria indexar --projeto <nome>`.
 
 ---
 
+## Deixar a empresa rodar sozinha
+
+```bash
+movili rotinas             # o calendário de fábrica
+movili rotinas proximas    # o que vem por aí
+movili rotinas agenda      # deixa de pé; executa na hora marcada
+```
+
+A `agenda` fica checando e dispara cada rotina no horário. Deixe num `tmux`, num
+`systemd --user` ou num container — a última execução fica gravada, então reiniciar não
+faz nada rodar duas vezes.
+
+Para disparar uma fora de hora (útil para testar antes de confiar o horário a ela):
+
+```bash
+movili rotinas rodar --rotina pipeline
+```
+
+**Ajustando o ritmo.** As rotinas ficam em `movili/rotinas/catalogo.py`. O agendamento é
+um `Agendamento(hora, minuto, dias_da_semana, dias_do_mes, meses)` — conjunto vazio quer
+dizer "qualquer". Alguns exemplos:
+
+```python
+Agendamento(hora=9, dias_da_semana=frozenset({0,1,2,3,4}))   # de segunda a sexta, 09:00
+Agendamento(hora=14, dias_da_semana=frozenset({2}))          # toda quarta, 14:00
+Agendamento(hora=9, dias_do_mes=frozenset({1}))              # todo dia 1º
+Agendamento(hora=18, dias_do_mes=frozenset({31}))            # último dia do mês
+Agendamento(hora=9, dias_do_mes=frozenset({1}),
+            meses=frozenset({1,4,7,10}))                     # trimestral
+```
+
+Dia 31 cai no último dia em meses curtos — senão a rotina nunca rodaria em fevereiro.
+Quando dia da semana e dia do mês são combinados, a data precisa satisfazer os dois.
+
+---
+
 ## Acompanhar pelo navegador
 
 ```bash

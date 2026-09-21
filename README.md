@@ -26,6 +26,7 @@ movili jarvis                                 # conversa por voz com a empresa
 - [Como eles conversam](#como-eles-conversam)
 - [Processos internos (fluxos)](#processos-internos-fluxos)
 - [Memória da empresa](#memória-da-empresa)
+- [Rotinas: o calendário interno](#rotinas-o-calendário-interno)
 - [Painel web](#painel-web)
 - [OpenJarvis — a camada conversacional](#openjarvis--a-camada-conversacional)
 - [Instalação](#instalação)
@@ -207,6 +208,41 @@ Ajuste em `config/modelos.yaml → embeddings`, ou desligue com `MOVILI_EMBEDDIN
 
 ---
 
+## Rotinas: o calendário interno
+
+Até aqui a empresa só trabalhava quando você mandava. As rotinas dão a ela um ritmo
+próprio — daily, revisão de pipeline, fecho financeiro, conselho trimestral.
+
+```bash
+movili rotinas                          # o calendário de fábrica
+movili rotinas proximas                 # o que vem por aí, e quando cada uma rodou
+movili rotinas rodar --rotina daily     # dispara uma agora, fora de hora
+movili rotinas agenda                   # deixa de pé, executando na hora marcada
+```
+
+| Rotina | Quando | O que faz |
+|---|---|---|
+| `daily` | seg–sex, 09:00 | produto e engenharia alinham avanço, bloqueio e risco de prazo |
+| `pipeline` | segunda, 10:00 | comercial, prospecção, marketing e financeiro revisam o funil |
+| `seguranca` | quarta, 14:00 | segurança e engenharia revisam exposição e o que vai a produção |
+| `saude-financeira` | sexta, 16:00 | Patricia fecha a semana: margem, caixa e recebíveis em risco |
+| `fechamento-mensal` | dia 1, 09:00 | diretoria fecha o mês contra a meta e ajusta o próximo |
+| `conselho` | dia 1 de jan/abr/jul/out | os sócios revisam a tese da empresa |
+| `higiene-memoria` | domingo, 03:00 | manutenção do índice semântico — **não gasta modelo** |
+
+Edite `movili/rotinas/catalogo.py` para ajustar o ritmo à sua operação.
+
+**A agenda sobrevive ao restart.** A última execução de cada rotina fica no SQLite, então
+desligar a máquina não faz a daily rodar duas vezes.
+
+**E não acumula fila.** Se a agenda ficou parada, os horários vencidos há mais de 6 horas
+são marcados como pulados em vez de disparados — ligar a máquina depois de um mês fora não
+despeja trinta dailies atrasadas. O acerto acontece numa passada só.
+
+Os próximos cinco compromissos também aparecem no [painel web](#painel-web).
+
+---
+
 ## Painel web
 
 O terminal mostra uma linha por agente. O painel mostra a empresa **conversando**:
@@ -222,7 +258,7 @@ Três colunas:
 |---|---|
 | **Equipe** | organograma por setor, com o modelo de cada pessoa; clique em alguém para falar direto |
 | **Barramento ao vivo** | cada tarefa, entrega, pergunta e decisão conforme acontece, com tipo e remetente |
-| **Dar trabalho à casa** | dispara triagem, fluxo, reunião ou pergunta a uma pessoa; acompanha a fila e o uso de modelo |
+| **Dar trabalho à casa** | dispara triagem, fluxo, reunião ou pergunta a uma pessoa; acompanha a fila, os próximos compromissos e o uso de modelo |
 
 O feed usa Server-Sent Events — sem polling, sem WebSocket, sem framework. O
 servidor é `http.server` da biblioteca padrão, mesma escolha da ponte do OpenJarvis:
@@ -416,6 +452,7 @@ movili memoria buscar "<consulta>" [--agente X] [--minimo 0.5]
 movili memoria indexar {--projeto X | --arquivo Y}
 movili memoria limpar [--projeto X]
 
+movili rotinas [listar|proximas|rodar|agenda]     # calendário interno
 movili painel [--porta 8080]                     # painel web ao vivo
 movili jarvis [--diagnostico]                    # conversa por voz
 movili ponte [--porta 8123]                      # API OpenAI-compatível
@@ -470,6 +507,7 @@ movili/
 │   └── orquestrador.py  fluxos, reuniões, triagem, paralelismo
 ├── agentes/             20 fichas funcionais (uma por arquivo)
 ├── fluxos/              7 processos internos
+├── rotinas/             calendário interno: agendamento, catálogo e agenda
 ├── painel/              painel web ao vivo (SSE, stdlib, sem dependência)
 ├── jarvis/              OpenJarvis: voz, conversa e ponte OpenAI
 ├── api/                 API REST opcional (FastAPI)
@@ -533,13 +571,14 @@ Para GPU NVIDIA, descomente o bloco `deploy.resources` no `docker-compose.yml`.
 make teste        # ou: python -m pytest tests -q
 ```
 
-140 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
+180 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
 Cobrem estrutura do quadro, consistência dos fluxos (inclusive se uma etapa depende
 de alguém que ainda não atuou), roteamento de modelos, barramento, memória, sandbox
 das ferramentas, fallback entre backends, a memória semântica (fatiamento, cosseno
 degenerado, isolamento de procedência, degradação sem backend), o painel (validação de
-entrada, fila de trabalho, encerramento ordenado) e a interpretação de intenção do
-Jarvis. Nove ordens de importação diferentes rodam em subprocess, para pegar ciclo de
+entrada, fila de trabalho, encerramento ordenado), o agendamento das rotinas (mês curto,
+ano bissexto, trimestre, catch-up depois de uma parada longa) e a interpretação de
+intenção do Jarvis. Nove ordens de importação diferentes rodam em subprocess, para pegar ciclo de
 import antes que o usuário pegue.
 
 ```bash

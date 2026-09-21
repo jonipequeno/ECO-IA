@@ -190,6 +190,34 @@ import antes do usuário.
 
 ---
 
+## Rotinas (`movili/rotinas/`)
+
+`modelo.py` tem a única parte com matemática de verdade: `Agendamento.proximo_disparo()`
+varre dia a dia a partir do instante dado até achar um que satisfaça dia da semana, dia
+do mês e mês ao mesmo tempo. Duas decisões que os testes fixam:
+
+- **Dia 31 cai no último dia do mês curto.** Sem isso, uma rotina de fim de mês nunca
+  rodaria em fevereiro — e o silêncio seria a pior forma de descobrir.
+- **Horizonte de 400 dias.** A varredura para em vez de girar para sempre com uma
+  combinação que não ocorre. Devolve `None`, e quem chama trata.
+
+`agenda.py` decide *se* roda. A última execução de cada rotina fica no SQLite da memória
+corporativa (chave `rotina:<id>:ultima_execucao`), então reiniciar não duplica disparo.
+
+A parte sutil é o **catch-up**. Se a agenda ficou parada, os horários vencidos há mais
+que a janela de tolerância (6h) são marcados como pulados, não executados: ligar a máquina
+depois de um mês fora não pode despejar trinta dailies. E o adiantamento acontece numa
+passada só — a primeira versão avançava um horário por ciclo, o que com checagem a cada
+30 segundos faria um mês de ausência levar 15 minutos para se acertar.
+
+Uma agenda que nunca rodou também não dispara o calendário inteiro de imediato: sem
+registro anterior, ela só considera o que venceu dentro da janela.
+
+`rodar()` espera em `threading.Event.wait()`, não `sleep()`: `parar()` acorda a espera na
+hora, em vez de esperar o ciclo terminar — a mesma lição do worker do painel.
+
+---
+
 ## Painel web (`movili/painel/`)
 
 Um `ThreadingHTTPServer` da biblioteca padrão que serve uma página única e três

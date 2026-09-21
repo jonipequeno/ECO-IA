@@ -27,6 +27,7 @@ from .. import fluxos as processos
 from ..core.mensagem import Mensagem
 from ..core.orquestrador import Ecossistema
 from ..llm.base import LLMIndisponivel
+from ..rotinas.agenda import Agenda
 
 WEB = Path(__file__).parent / "web"
 LIMITE_CORPO = 512 * 1024
@@ -84,6 +85,7 @@ class Central:
         self._encerrando = False
         self._worker = threading.Thread(target=self._processar, daemon=True)
         self._worker.start()
+        self.agenda = Agenda(eco)
         eco.barramento.observar(self._do_barramento)
 
     # --- eventos ------------------------------------------------------
@@ -245,10 +247,26 @@ class Central:
             "fluxos": [{"nome": n, "descricao": d, "etapas": q}
                        for n, d, q in processos.listar()],
             "memoria": self._memoria(),
+            "rotinas": self._rotinas(),
             "metricas": self.eco.metricas(),
             "tarefas": tarefas,
             "eventos": eventos,
         }
+
+    def _rotinas(self) -> list[dict[str, Any]]:
+        """Proximos compromissos do calendario interno."""
+        try:
+            return [
+                {
+                    "id": r.id,
+                    "nome": r.nome,
+                    "quando": q.isoformat(timespec="minutes"),
+                    "descricao": r.agendamento.descrever(),
+                }
+                for r, q in self.agenda.proximas(5)
+            ]
+        except Exception:
+            return []   # a agenda e informativa aqui: nunca derruba o painel
 
     def _memoria(self) -> dict[str, Any]:
         if self.eco.semantica is None:
