@@ -26,6 +26,8 @@ ENV_BACKEND = "MOVILI_BACKEND_PADRAO"
 ENV_TIMEOUT = "MOVILI_TIMEOUT"
 ENV_DB = "MOVILI_DB"
 ENV_WORKSPACE = "MOVILI_WORKSPACE"
+ENV_EMBEDDINGS = "MOVILI_EMBEDDINGS"      # "0" desliga a memoria semantica
+ENV_MODELO_EMBED = "MOVILI_MODELO_EMBEDDING"
 
 
 def _ler_arquivo(caminho: Path) -> dict[str, Any]:
@@ -51,6 +53,7 @@ class Config:
     roteamento: dict[str, dict[str, Any]] = field(default_factory=dict)
     catalogo: dict[str, Any] = field(default_factory=dict)
     perfis_hardware: dict[str, Any] = field(default_factory=dict)
+    embeddings: dict[str, Any] = field(default_factory=dict)
     caminho_db: str = "data/movili.db"
     workspace: str = "workspace"
     tentativas: int = 2
@@ -142,11 +145,22 @@ def carregar(
         ordem_fallback=ordem,
         roteamento=roteamento,
         catalogo=modelos.get("catalogo") or {},
+        embeddings=modelos.get("embeddings") or {},
         perfis_hardware=modelos.get("perfis_hardware") or {},
         caminho_db=os.getenv(ENV_DB, modelos.get("banco", "data/movili.db")),
         workspace=os.getenv(ENV_WORKSPACE, modelos.get("workspace", "workspace")),
         tentativas=int(modelos.get("tentativas", 2)),
     )
+
+    desligar = os.getenv(ENV_EMBEDDINGS)
+    if desligar is not None and desligar.strip().lower() in {"0", "false", "nao", "no"}:
+        cfg.embeddings["habilitado"] = False
+    modelo_embed = os.getenv(ENV_MODELO_EMBED)
+    if modelo_embed:
+        cfg.embeddings["modelo"] = modelo_embed
+    if escolhido == "simulado":
+        # no modo simulado a vetorizacao tambem e simulada, pelo mesmo provedor
+        cfg.embeddings["backend"] = "simulado"
 
     if perfil_hardware:
         cfg.aplicar_perfil_hardware(perfil_hardware)

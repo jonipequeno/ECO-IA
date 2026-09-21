@@ -1,5 +1,5 @@
 # Atalhos do ecossistema Movili.
-.PHONY: ajuda instalar modelos status equipe verificar teste ponte jarvis api limpar
+.PHONY: ajuda instalar modelos status equipe verificar teste memoria ponte jarvis api limpar
 
 PY ?= python3
 
@@ -12,6 +12,7 @@ ajuda:
 	@echo "  make status       mostra Ollama, LM Studio e o roteamento"
 	@echo "  make equipe       mostra o organograma"
 	@echo "  make teste        roda a suite de testes (backend simulado)"
+	@echo "  make memoria      estado da memoria semantica (RAG)"
 	@echo "  make jarvis       abre a conversa por voz (OpenJarvis)"
 	@echo "  make ponte        sobe a ponte OpenAI-compativel na porta 8123"
 	@echo "  make api          sobe a API HTTP na porta 8000"
@@ -34,6 +35,9 @@ equipe:
 
 teste:
 	$(PY) -m pytest tests -q
+
+memoria:
+	$(PY) -m movili memoria status
 
 jarvis:
 	$(PY) -m movili jarvis

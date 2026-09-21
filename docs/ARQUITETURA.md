@@ -8,7 +8,7 @@ O ecossistema tem quatro camadas. Cada uma só conhece a de baixo.
                   Orquestrador
         fluxos · reuniões · triagem · paralelismo
                         ↓
-     Agente (persona)  ·  Barramento  ·  Memória  ·  Ferramentas
+  Agente (persona) · Barramento · Memória · RAG · Ferramentas
                         ↓
           Roteador de LLM  →  Ollama · LM Studio · Simulado
 ```
@@ -78,6 +78,31 @@ Duas decisões de segurança:
 - **Sandbox.** `salvar_arquivo` resolve o caminho e recusa qualquer coisa fora do
   workspace, incluindo `../`.
 
+### `rag.py`
+A memória semântica: o que faz a empresa lembrar do que já produziu.
+
+**Fatiamento.** `fatiar()` quebra o texto em trechos de ~1200 caracteres com 150 de
+sobreposição, cortando em fim de parágrafo, quebra de linha ou fim de frase — nessa
+ordem de preferência, de trás para frente a partir do limite. A sobreposição evita
+perder uma decisão que cai exatamente na emenda entre dois trechos.
+
+**Busca.** Cosseno em Python puro sobre vetores guardados como JSON no mesmo SQLite.
+Sem banco vetorial externo: para o volume de uma software house (milhares de trechos,
+não milhões), uma varredura linear resolve em milissegundos e economiza uma dependência
+de infraestrutura inteira. Se a base crescer a ponto de isso pesar, o ponto de troca é
+só a função `buscar()`.
+
+**Procedência.** Cada trecho guarda a assinatura `<backend>/<modelo>` que o produziu, e
+a busca filtra por ela. Sem isso, trocar de modelo de embedding contamina o índice em
+silêncio: o cosseno entre vetores de espaços diferentes retorna um número, e o número
+não significa nada. `estatisticas()` reporta quantos trechos ficaram inativos por
+mudança de procedência.
+
+**Degradação.** `buscar()` devolve `[]` se o backend de embedding não responder — a
+empresa segue trabalhando sem memória. `indexar()`, ao contrário, levanta
+`LLMIndisponivel` dizendo qual `ollama pull` falta: indexar em silêncio sem gravar nada
+seria pior do que falhar.
+
 ### `agente.py`
 O `Perfil` é a ficha funcional (nome, cargo, missão, KPIs, estilo, formato de entrega,
 temperatura, modelo). O `Agente` monta o prompt de sistema a partir dela **mais** o
@@ -96,6 +121,12 @@ O `Ecossistema` monta a empresa inteira e oferece cinco modos:
 | `executar_fluxo` | processo com ordem e dependência explícita entre etapas |
 | `reuniao` | mesa redonda com N rodadas de debate e ata final |
 | `atender` | triagem automática: a diretoria escolhe quem atua |
+
+Antes de cada delegação, `_com_memoria()` consulta o índice semântico e injeta os
+trechos relevantes de **outros** projetos no contexto (o projeto em andamento é
+excluído: o que interessa é o que a empresa fez antes). Depois da entrega,
+`_indexar()` devolve o resultado ao índice. Falha na indexação é registrada e
+engolida — melhoria não pode derrubar entrega.
 
 O contexto de cada etapa é montado por `_montar_contexto`: briefing original mais as
 entregas das etapas declaradas em `usa_saida_de` (ou todas, se não declarar), truncadas

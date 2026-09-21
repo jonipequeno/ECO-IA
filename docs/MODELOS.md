@@ -147,7 +147,15 @@ movili agente dev_backend "refatore o módulo de faturamento" --modelo qwen3-cod
 | `starcoder2:7b` | ~4 GB | base legada com muita linguagem diferente |
 | `sqlcoder:15b` | ~9 GB | SQL puro complexo |
 
-### Embeddings — busca na memória corporativa
+### Embeddings — memória da empresa
+
+Estes não conversam: eles vetorizam texto para a busca semântica que faz os agentes
+lembrarem de projetos anteriores. Sem um deles baixado, o ecossistema roda normalmente,
+só sem memória entre execuções.
+
+Trocar de modelo de embedding **invalida o índice existente** — vetores de modelos
+diferentes não são comparáveis. O ecossistema detecta isso e avisa em
+`movili memoria status`; reindexe com `movili memoria indexar --projeto <nome>`.
 
 | Modelo | RAM | Usar para |
 |---|---|---|

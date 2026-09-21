@@ -18,6 +18,7 @@ from .barramento import Barramento
 from .ferramentas import CaixaDeFerramentas
 from .memoria import MemoriaCorporativa
 from .mensagem import Mensagem, Prioridade, Tipo
+from .rag import MemoriaSemantica
 
 JSON_LISTA = re.compile(r"\[[^\[\]]*\]", re.DOTALL)
 
@@ -142,6 +143,7 @@ class Ecossistema:
         self.barramento = Barramento(verboso=False)
         self.ferramentas = CaixaDeFerramentas(config.workspace)
         self.memoria = MemoriaCorporativa(config.caminho_db) if persistir else None
+        self.semantica = self._montar_semantica(persistir)
 
         ids = list(somente) if somente else list(quadro.REGISTRO)
         self.agentes: dict[str, Agente] = {}
@@ -159,6 +161,22 @@ class Ecossistema:
                 memoria=self.memoria,
             )
         self.ao_falar: Callable[[str, str, str], None] | None = None
+
+    def _montar_semantica(self, persistir: bool) -> MemoriaSemantica | None:
+        """Liga a memoria semantica, se configurada. Falhar aqui nao derruba a empresa."""
+        cfg = self.config.embeddings or {}
+        if not persistir or not cfg.get("habilitado", False):
+            return None
+        try:
+            return MemoriaSemantica(
+                self.roteador,
+                self.config.caminho_db,
+                modelo=cfg.get("modelo", "nomic-embed-text"),
+                backend=cfg.get("backend"),
+            )
+        except Exception as exc:  # banco travado, disco cheio: segue sem memoria
+            self._log(f"   (memoria semantica indisponivel: {exc})")
+            return None
 
     # ------------------------------------------------------------------
     # Utilitarios
@@ -222,6 +240,7 @@ class Ecossistema:
         )
         self._log(f"\n>> {agente.perfil.nome} ({agente.perfil.cargo}) trabalhando...")
 
+        contexto = self._com_memoria(contexto, instrucao, ident, projeto)
         entrega = agente.responder(
             instrucao, contexto=contexto, colegas=self.diretorio(exceto=ident)
         )
@@ -238,6 +257,7 @@ class Ecossistema:
         )
         if self.memoria is not None and projeto:
             self.memoria.salvar_entregavel(projeto, ident, tarefa.assunto, entrega)
+        self._indexar(entrega, ident, projeto, tarefa.assunto, tarefa.id)
 
         self._log(f"<< {agente.perfil.nome} concluiu em {duracao:.1f}s")
         self._anunciar(ident, instrucao, entrega)
@@ -252,6 +272,34 @@ class Ecossistema:
             entrega=entrega,
             duracao_s=duracao,
         )
+
+    def _com_memoria(self, contexto: str, instrucao: str, ident: str, projeto: str) -> str:
+        """Acrescenta ao contexto o que a empresa ja produziu sobre o assunto."""
+        if self.semantica is None:
+            return contexto
+        cfg = self.config.embeddings or {}
+        bloco = self.semantica.contexto(
+            f"{instrucao}\n{contexto[:800]}",
+            limite=int(cfg.get("trechos_por_consulta", 3)),
+            minimo=float(cfg.get("similaridade_minima", 0.35)),
+            excluir_projeto=projeto or None,
+        )
+        if not bloco:
+            return contexto
+        self._log("   (recuperou memoria de projetos anteriores)")
+        return f"{bloco}\n\n---\n\n{contexto}" if contexto else bloco
+
+    def _indexar(self, entrega: str, ident: str, projeto: str, titulo: str, referencia: str) -> None:
+        """Guarda a entrega no indice semantico para as proximas execucoes."""
+        if self.semantica is None or not (self.config.embeddings or {}).get("indexar_entregas", True):
+            return
+        try:
+            self.semantica.indexar(
+                entrega, origem="entrega", referencia=referencia,
+                projeto=projeto, agente=ident, titulo=titulo,
+            )
+        except Exception as exc:  # indexar e melhoria, nao pode quebrar a entrega
+            self._log(f"   (nao foi possivel indexar a entrega: {exc})")
 
     def _executar_handoffs(
         self, origem: Agente, entrega: str, projeto: str, thread: str, profundidade: int
@@ -544,3 +592,5 @@ class Ecossistema:
     def encerrar(self) -> None:
         if self.memoria is not None:
             self.memoria.fechar()
+        if self.semantica is not None:
+            self.semantica.fechar()

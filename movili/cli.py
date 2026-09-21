@@ -263,6 +263,92 @@ def cmd_chat(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_memoria(args: argparse.Namespace) -> int:
+    # aceita tanto "movili memoria indexar --projeto X" quanto "movili --projeto X memoria ..."
+    projeto = getattr(args, "projeto_memoria", None) or args.projeto
+    eco = _montar(args)
+    try:
+        if eco.semantica is None:
+            print(
+                "A memoria semantica esta desligada.\n"
+                "Ligue em config/modelos.yaml (embeddings.habilitado: true) e baixe o "
+                "modelo com:\n  ollama pull nomic-embed-text",
+                file=sys.stderr,
+            )
+            return 1
+
+        if args.acao == "status":
+            s = eco.semantica.estatisticas()
+            _cabecalho("MEMORIA SEMANTICA DA MOVILI")
+            print(f"  trechos indexados: {s['trechos']}")
+            print(f"  procedencia atual: {eco.semantica.assinatura}")
+            if s["inativos"]:
+                print(
+                    f"  ATENCAO: {s['inativos']} trecho(s) foram indexados por outro "
+                    "backend/modelo e estao invisiveis para a busca atual.\n"
+                    "           Reindexe-os ou volte ao modelo anterior."
+                )
+            if s["projetos"]:
+                print("\n  por projeto:")
+                for projeto, n in list(s["projetos"].items())[:15]:
+                    print(f"    {projeto:<34} {n:>4} trechos")
+            if s["agentes"]:
+                print("\n  por agente:")
+                for agente, n in list(s["agentes"].items())[:20]:
+                    print(f"    {agente:<34} {n:>4} trechos")
+            if not s["trechos"]:
+                print("\n  Nada indexado ainda. Rode um fluxo, ou indexe um projeto:")
+                print("    movili memoria indexar --projeto <nome>")
+
+        elif args.acao == "buscar":
+            if not args.consulta:
+                print("informe o que buscar: movili memoria buscar \"<consulta>\"", file=sys.stderr)
+                return 1
+            achados = eco.semantica.buscar(
+                args.consulta, limite=args.limite, minimo=args.minimo,
+                agente=args.agente, projeto=args.so_projeto,
+            )
+            _cabecalho(f"BUSCA: {args.consulta}")
+            if not achados:
+                print("  nada encontrado acima da similaridade minima.")
+                print(f"  (tente --minimo menor que {args.minimo})")
+            for a in achados:
+                print(f"\n{a.citacao()}")
+
+        elif args.acao == "indexar":
+            if args.arquivo:
+                caminho = Path(args.arquivo)
+                if not caminho.is_file():
+                    print(f"arquivo nao encontrado: {caminho}", file=sys.stderr)
+                    return 1
+                n = eco.semantica.indexar(
+                    caminho.read_text(encoding="utf-8"),
+                    origem="arquivo", referencia=str(caminho),
+                    projeto=projeto or "", titulo=caminho.name,
+                )
+                print(f"{n} trecho(s) indexado(s) de {caminho}")
+            elif projeto:
+                if eco.memoria is None:
+                    print("o banco esta desligado (--sem-banco)", file=sys.stderr)
+                    return 1
+                n = eco.semantica.indexar_entregaveis(eco.memoria, projeto)
+                print(f"{n} trecho(s) indexado(s) do projeto '{projeto}'")
+            else:
+                print("informe --projeto <nome> ou --arquivo <caminho>", file=sys.stderr)
+                return 1
+
+        elif args.acao == "limpar":
+            n = eco.semantica.limpar(projeto)
+            alvo = f"do projeto '{projeto}'" if projeto else "de toda a memoria"
+            print(f"{n} trecho(s) removido(s) {alvo}")
+    except LLMIndisponivel as exc:
+        print(f"\nERRO: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        eco.encerrar()
+    return 0
+
+
 def cmd_jarvis(args: argparse.Namespace) -> int:
     from .jarvis import diagnostico as diag_voz
     from .jarvis.sessao import SessaoJarvis
@@ -340,6 +426,8 @@ def construir_parser() -> argparse.ArgumentParser:
               movili jarvis --diagnostico
               movili jarvis                  # conversa por voz
               movili ponte                   # expoe a empresa como API OpenAI
+              movili memoria status
+              movili memoria buscar "precificacao de projeto de logistica"
             """
         ),
     )
@@ -396,6 +484,19 @@ def construir_parser() -> argparse.ArgumentParser:
     s.add_argument("--rodadas", type=int, default=2)
     s.add_argument("--maximo", type=int, default=5)
     s.set_defaults(func=cmd_chat)
+
+    s = sub.add_parser("memoria", help="memoria semantica: o que a empresa ja produziu")
+    s.add_argument("acao", choices=["status", "buscar", "indexar", "limpar"])
+    s.add_argument("consulta", nargs="?", help="texto a buscar (acao 'buscar')")
+    s.add_argument("--limite", type=int, default=5, help="quantos trechos devolver")
+    s.add_argument("--minimo", type=float, default=0.25, help="similaridade minima (0 a 1)")
+    s.add_argument("--agente", help="restringe a busca a um funcionario")
+    s.add_argument("--so-projeto", dest="so_projeto", help="restringe a busca a um projeto")
+    s.add_argument("--arquivo", help="indexa um arquivo de texto ou markdown")
+    # dest proprio: um --projeto com default None aqui sobrescreveria o global
+    s.add_argument("--projeto", dest="projeto_memoria",
+                   help="projeto alvo de 'indexar' e 'limpar'")
+    s.set_defaults(func=cmd_memoria, projeto_memoria=None)
 
     s = sub.add_parser("jarvis", help="conversa por voz com a empresa (OpenJarvis)")
     s.add_argument("--tts", default="auto", choices=["auto", "piper", "sistema", "texto"],

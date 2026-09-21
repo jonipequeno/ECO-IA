@@ -66,6 +66,10 @@ class ProvedorLLM:
     ) -> Resposta:
         raise NotImplementedError
 
+    def embeddings(self, textos: list[str], *, modelo: str | None = None) -> list[list[float]]:
+        """Vetoriza textos para busca semantica. Nem todo backend implementa."""
+        raise NotImplementedError
+
     def disponivel(self) -> bool:
         raise NotImplementedError
 

@@ -12,6 +12,25 @@ tentativas: 2         # novas tentativas antes de cair para o proximo backend
 banco: data/movili.db
 workspace: workspace
 
+# Memoria semantica (RAG sobre o que a empresa ja produziu).
+# Sem o modelo baixado, o ecossistema roda igual - so sem lembrar de projetos
+# anteriores. Baixe com: ollama pull nomic-embed-text
+embeddings:
+  habilitado: true
+  backend: ollama
+  modelo: nomic-embed-text
+  # quantos trechos do passado entram no contexto de cada tarefa
+  trechos_por_consulta: 3
+  # Similaridade minima para um trecho ser considerado relevante (0 a 1).
+  # O valor util depende do modelo: com o nomic-embed-text, textos sem relacao
+  # ja pontuam por volta de 0.3-0.4, entao um limiar baixo enche o contexto de
+  # ruido. Se a memoria nunca aparecer, baixe para 0.45; se vier coisa fora de
+  # contexto, suba para 0.6. Confira o efeito com:
+  #   movili memoria buscar "<assunto>" --minimo 0.5
+  similaridade_minima: 0.55
+  # indexa automaticamente cada entrega produzida
+  indexar_entregas: true
+
 backends:
   ollama:
     tipo: ollama

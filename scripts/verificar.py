@@ -30,6 +30,13 @@ def main() -> int:
     for setor, ids in quadro.SETORES.items():
         print(f"         {setor:<20} {len(ids)} pessoa(s)")
 
+    emb = cfg.embeddings or {}
+    if emb.get("habilitado"):
+        print(f"[config] memoria semantica: {emb.get('modelo')} "
+              f"(minimo {emb.get('similaridade_minima')})")
+    else:
+        print("[config] memoria semantica: desligada")
+
     print(f"\n[fluxos] {len(processos.REGISTRO)} processos internos")
     for nome, _desc, etapas in processos.listar():
         print(f"         {nome:<22} {etapas} etapas")
@@ -74,7 +81,9 @@ def main() -> int:
 def _modelos_faltando(cfg, instalados: list[str]) -> set[str]:
     base = {m.split(":")[0] for m in instalados}
     desejados = {r.get("modelo") for r in cfg.roteamento.values() if r.get("modelo")}
-    return {m for m in desejados if m not in instalados and m.split(":")[0] not in base}
+    if (cfg.embeddings or {}).get("habilitado"):
+        desejados.add(cfg.embeddings.get("modelo", "nomic-embed-text"))
+    return {m for m in desejados if m and m not in instalados and m.split(":")[0] not in base}
 
 
 if __name__ == "__main__":

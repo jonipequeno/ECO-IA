@@ -87,6 +87,46 @@ O CEO faz a triagem, escala quem precisa atuar, roda e consolida.
 
 ---
 
+## Fazer a empresa lembrar
+
+```bash
+ollama pull nomic-embed-text      # habilita a memória semântica
+```
+
+A partir daí, cada entrega é indexada e o trabalho anterior relevante entra no contexto
+das próximas tarefas automaticamente. Você vê acontecendo no progresso:
+
+```
+>> Patricia Souza (Controller e Gerente Financeira Senior) trabalhando...
+   (recuperou memoria de projetos anteriores)
+```
+
+```bash
+movili memoria status                                    # o que está indexado
+movili memoria buscar "precificação de logística"        # consulta direta
+movili memoria buscar "cláusula de SLA" --agente juridico
+movili memoria indexar --projeto frota-2026              # reindexa projeto antigo
+movili memoria indexar --arquivo docs/contrato-modelo.md # ensina um documento à casa
+movili memoria limpar --projeto teste
+```
+
+**Calibrando o limiar.** O padrão é `0.55`. Se a memória nunca aparecer, baixe para
+`0.45`; se vier coisa fora de contexto, suba para `0.6`. Teste o efeito antes de mudar
+a configuração:
+
+```bash
+movili memoria buscar "<assunto>" --minimo 0.45
+```
+
+**Trocou de modelo de embedding?** `movili memoria status` avisa quantos trechos ficaram
+invisíveis — vetores de modelos diferentes não são comparáveis. Reindexe os projetos que
+importam com `movili memoria indexar --projeto <nome>`.
+
+**Desligar:** `MOVILI_EMBEDDINGS=0` ou `embeddings.habilitado: false` em
+`config/modelos.yaml`.
+
+---
+
 ## Conversar por voz
 
 ```bash
@@ -179,4 +219,12 @@ ou escolha um `--setor` em vez da empresa toda.
 timeout.
 
 **Testar sem modelo nenhum** — `--backend simulado` valida todo o encanamento sem
-executar modelo. As respostas vêm marcadas como `[RESPOSTA SIMULADA]`.
+executar modelo. As respostas vêm marcadas como `[RESPOSTA SIMULADA]`, e a vetorização
+também é simulada (hashing lexical, não semântico) — serve para exercitar o RAG, não
+para avaliar a qualidade da busca.
+
+**A memória nunca aparece** — confira nesta ordem: `movili memoria status` mostra
+trechos indexados? Se `inativos` for maior que zero, você trocou de modelo de embedding
+e precisa reindexar. Se houver trechos ativos, o limiar está alto demais: teste com
+`movili memoria buscar "<assunto>" --minimo 0.45` e ajuste
+`embeddings.similaridade_minima`.

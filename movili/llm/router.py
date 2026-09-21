@@ -16,6 +16,18 @@ PROVEDORES = {
 }
 
 
+# Palavras vazias do portugues. Sem elas, o vetor lexical do provedor
+# simulado fica dominado por "de/e/para" e textos de assuntos distintos
+# aparecem parecidos.
+_VAZIAS = frozenset(
+    """a as ao aos o os um uma uns umas de do da dos das em no na nos nas
+    por para pelo pela com sem sob sobre entre e ou mas que se como ja nao
+    sim ser e' eh ha ao la li o's do's mais menos muito pouco todo toda
+    todos todas este esta isso essa esse aquele aquela seu sua seus suas
+    meu minha nosso nossa qual quais quando onde porque""".split()
+)
+
+
 class ProvedorSimulado(ProvedorLLM):
     """Backend de teste: nao chama modelo nenhum.
 
@@ -62,6 +74,30 @@ class ProvedorSimulado(ProvedorLLM):
             tokens_entrada=sum(len(m["content"]) // 4 for m in normalizadas),
             tokens_saida=len(corpo) // 4,
         )
+
+    def embeddings(self, textos: list[str], *, modelo: str | None = None) -> list[list[float]]:
+        """Vetor deterministico por hashing de termos (nao e semantico).
+
+        Serve para exercitar o encanamento do RAG sem modelo: textos que
+        compartilham palavras ficam proximos, o que basta para testar
+        indexacao e ranqueamento. NAO substitui um modelo de embedding.
+        """
+        return [self._vetor_lexical(t) for t in textos]
+
+    @staticmethod
+    def _vetor_lexical(texto: str, dimensoes: int = 256) -> list[float]:
+        import hashlib
+        import math
+        import re
+
+        vetor = [0.0] * dimensoes
+        for termo in re.findall(r"\w+", texto.lower()):
+            if len(termo) < 3 or termo in _VAZIAS:
+                continue
+            balde = int(hashlib.md5(termo.encode("utf-8")).hexdigest()[:8], 16) % dimensoes
+            vetor[balde] += 1.0
+        norma = math.sqrt(sum(x * x for x in vetor))
+        return [x / norma for x in vetor] if norma else vetor
 
     def disponivel(self) -> bool:
         return True
@@ -185,6 +221,52 @@ class RoteadorLLM:
             "nenhum backend respondeu. Verifique se o Ollama (ollama serve) ou o "
             "LM Studio (Developer > Start Server) estao rodando.\nDetalhes:\n  - "
             + "\n  - ".join(erros or ["sem backends candidatos"])
+        )
+
+    def vetorizar(
+        self,
+        textos: list[str],
+        *,
+        backend: str | None = None,
+        modelo: str | None = None,
+    ) -> list[list[float]]:
+        """Gera embeddings. Atalho de `vetorizar_com_origem` quando a origem nao importa."""
+        return self.vetorizar_com_origem(textos, backend=backend, modelo=modelo)[0]
+
+    def vetorizar_com_origem(
+        self,
+        textos: list[str],
+        *,
+        backend: str | None = None,
+        modelo: str | None = None,
+    ) -> tuple[list[list[float]], str]:
+        """Gera embeddings e devolve tambem QUAL backend os produziu.
+
+        A origem importa: vetores de modelos diferentes nao sao comparaveis
+        entre si, entao quem indexa precisa registrar a procedencia.
+
+        Levanta LLMIndisponivel com instrucao acionavel se ninguem atender -
+        normalmente porque o modelo de embedding nao foi baixado.
+        """
+        if not textos:
+            return [], ""
+        erros: list[str] = []
+        for nome in self._candidatos(backend):
+            prov = self.provedor(nome)
+            try:
+                return prov.embeddings(textos, modelo=modelo), nome
+            except NotImplementedError:
+                erros.append(f"[{nome}] nao suporta embeddings")
+            except LLMIndisponivel as exc:
+                erros.append(str(exc))
+            except LLMError as exc:
+                erros.append(str(exc))
+
+        raise LLMIndisponivel(
+            "nenhum backend gerou embeddings. Baixe o modelo de embedding com:\n"
+            "  ollama pull nomic-embed-text\n"
+            "(no LM Studio, carregue um modelo de embedding pela aba de busca).\n"
+            "Detalhes:\n  - " + "\n  - ".join(erros)
         )
 
     def _candidatos(self, backend: str | None) -> list[str]:

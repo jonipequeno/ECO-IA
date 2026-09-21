@@ -25,6 +25,7 @@ movili jarvis                                 # conversa por voz com a empresa
 - [O quadro de funcionários](#o-quadro-de-funcionários)
 - [Como eles conversam](#como-eles-conversam)
 - [Processos internos (fluxos)](#processos-internos-fluxos)
+- [Memória da empresa](#memória-da-empresa)
 - [OpenJarvis — a camada conversacional](#openjarvis--a-camada-conversacional)
 - [Instalação](#instalação)
 - [Modelos do Ollama: qual usar para quê](#modelos-do-ollama-qual-usar-para-quê)
@@ -159,6 +160,52 @@ movili fluxo decisao-estrategica "abrir uma unidade de produto SaaS próprio"
 
 ---
 
+## Memória da empresa
+
+Sem memória, toda execução começa do zero: o financeiro reprecifica do nada um projeto
+igual ao que a casa entregou mês passado. O ecossistema indexa cada entrega num índice
+vetorial e recupera o trabalho anterior relevante antes de cada tarefa.
+
+```bash
+ollama pull nomic-embed-text      # é só isso; sem ele o resto roda igual
+
+movili fluxo novo-projeto "app de roteirização para transportadora"
+# ... semanas depois, outro cliente do mesmo setor:
+movili fluxo novo-projeto "sistema de rastreamento de frota para distribuidora"
+#   >> Patricia Souza (Controller e Gerente Financeira Senior) trabalhando...
+#      (recuperou memoria de projetos anteriores)
+```
+
+O agente recebe os trechos com a procedência — quem escreveu, em que projeto, com que
+relevância — e é instruído a dizer quando está reaproveitando uma decisão anterior.
+
+```bash
+movili memoria status
+movili memoria buscar "precificação de projeto de logística" --limite 5
+movili memoria buscar "cláusula de SLA" --agente juridico
+movili memoria indexar --projeto frota-2026        # reindexa um projeto antigo
+movili memoria indexar --arquivo docs/contrato-modelo.md
+movili memoria limpar --projeto teste
+```
+
+**Como funciona:** cada entrega é fatiada em trechos de ~1200 caracteres com
+sobreposição (cortando em fim de parágrafo quando dá), vetorizada e guardada no mesmo
+SQLite. A busca é cosseno em Python puro — sem banco vetorial externo. O projeto em
+andamento é excluído da busca: o que interessa é o que a empresa fez **antes**.
+
+**Procedência dos vetores.** Cada trecho guarda qual backend e modelo o produziu, e a
+busca só compara vetores da mesma procedência — cosseno entre espaços vetoriais
+diferentes não significa nada. Se você trocar de modelo de embedding, `movili memoria
+status` avisa quantos trechos ficaram invisíveis e você reindexa.
+
+**Se degrada em vez de quebrar.** Sem o modelo de embedding baixado, a busca devolve
+vazio e a empresa segue trabalhando sem memória. Indexar, aí sim, dá erro — dizendo
+exatamente qual `ollama pull` falta.
+
+Ajuste em `config/modelos.yaml → embeddings`, ou desligue com `MOVILI_EMBEDDINGS=0`.
+
+---
+
 ## OpenJarvis — a camada conversacional
 
 O **OpenJarvis** é a recepção falada do ecossistema. Ele entende o que você quer,
@@ -283,7 +330,7 @@ movili modelos --grupo codigo   # só os modelos de código
 | Copy / Design / CS | `gemma3:12b` | a escrita mais natural em pt-BR entre os modelos médios |
 | Prospecção | `mistral-nemo:12b` | textos curtos, e-mail frio e cadência |
 | Sócios / Diretoria / Produto / PMO | `qwen3:14b` | nuance de decisão e síntese executiva |
-| Embeddings (RAG) | `nomic-embed-text` | rápido, 8k de contexto, bom em português |
+| Embeddings — memória da empresa | **`nomic-embed-text`** | rápido, 8k de contexto, bom em português — é o que faz os agentes lembrarem de projetos anteriores |
 | Visão (mockup, OCR) | `llama3.2-vision:11b` / `minicpm-v:8b` | análise de criativo e leitura de documento |
 
 ### Perfis de hardware
@@ -327,6 +374,11 @@ movili fluxo <nome> "<briefing>"                 # executa um processo
 movili reuniao "<tema>" [--rodadas N] [--setor X]
 movili atender "<demanda>"                       # a diretoria escala o time
 movili chat                                      # modo conversa por texto
+
+movili memoria status                            # estado do índice semântico
+movili memoria buscar "<consulta>" [--agente X] [--minimo 0.5]
+movili memoria indexar {--projeto X | --arquivo Y}
+movili memoria limpar [--projeto X]
 
 movili jarvis [--diagnostico]                    # conversa por voz
 movili ponte [--porta 8123]                      # API OpenAI-compatível
@@ -376,6 +428,7 @@ movili/
 │   ├── barramento.py    pub/sub thread-safe com histórico auditável
 │   ├── memoria.py       janela curta por agente + SQLite corporativo
 │   ├── ferramentas.py   calculadora segura, workspace sandbox
+│   ├── rag.py           memória semântica: fatiamento, cosseno, procedência
 │   ├── agente.py        persona, prompt de sistema, loop de ferramentas
 │   └── orquestrador.py  fluxos, reuniões, triagem, paralelismo
 ├── agentes/             20 fichas funcionais (uma por arquivo)
@@ -396,6 +449,8 @@ movili/
   executor resolve. Funciona igual nos dois backends, com qualquer modelo aberto.
 - **Sandbox no workspace.** A ferramenta de escrita recusa caminhos fora do workspace.
 - **Sem `eval`.** A calculadora do financeiro usa AST com operadores permitidos.
+- **Degradação, não quebra.** Memória semântica indisponível, motor de voz ausente ou
+  indexação falhando nunca derrubam a entrega — o ecossistema segue e avisa.
 
 ---
 
@@ -416,6 +471,8 @@ movili api --porta 8000        # docs interativas em /docs
 | `/reuniao` | POST | convoca uma reunião |
 | `/atender` | POST | triagem automática |
 | `/jarvis` | POST | um turno de conversa |
+| `/memoria` | GET | estado do índice semântico |
+| `/memoria/buscar` | POST | busca na memória da empresa |
 
 ---
 
@@ -437,10 +494,12 @@ Para GPU NVIDIA, descomente o bloco `deploy.resources` no `docker-compose.yml`.
 make teste        # ou: python -m pytest tests -q
 ```
 
-69 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
+94 testes rodando no backend simulado — sem GPU, sem modelo baixado, sem rede.
 Cobrem estrutura do quadro, consistência dos fluxos (inclusive se uma etapa depende
 de alguém que ainda não atuou), roteamento de modelos, barramento, memória, sandbox
-das ferramentas, fallback entre backends e a interpretação de intenção do Jarvis.
+das ferramentas, fallback entre backends, a memória semântica (fatiamento, cosseno
+degenerado, isolamento de procedência, degradação sem backend) e a interpretação de
+intenção do Jarvis.
 
 ```bash
 python scripts/verificar.py    # diagnóstico do ambiente e modelos faltando

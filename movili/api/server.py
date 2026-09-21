@@ -67,6 +67,14 @@ class PedidoJarvis(BaseModel):
     mensagem: str
 
 
+class PedidoBusca(BaseModel):
+    consulta: str
+    limite: int = 5
+    minimo: float = 0.25
+    agente: str | None = None
+    projeto: str | None = None
+
+
 # ---------------------------------------------------------------------
 @app.get("/")
 def raiz() -> dict[str, Any]:
@@ -160,3 +168,33 @@ def atender(pedido: PedidoFluxo) -> dict[str, Any]:
 def jarvis(pedido: PedidoJarvis) -> dict[str, Any]:
     resposta = obter_jarvis().responder(pedido.mensagem)
     return {"acao": resposta["acao"], "fala": resposta["fala"]}
+
+
+@app.get("/memoria")
+def memoria_status() -> dict[str, Any]:
+    eco = obter_eco()
+    if eco.semantica is None:
+        raise HTTPException(503, "memoria semantica desligada em config/modelos.yaml")
+    return {"assinatura": eco.semantica.assinatura, **eco.semantica.estatisticas()}
+
+
+@app.post("/memoria/buscar")
+def memoria_buscar(pedido: PedidoBusca) -> list[dict[str, Any]]:
+    eco = obter_eco()
+    if eco.semantica is None:
+        raise HTTPException(503, "memoria semantica desligada em config/modelos.yaml")
+    achados = eco.semantica.buscar(
+        pedido.consulta, limite=pedido.limite, minimo=pedido.minimo,
+        agente=pedido.agente, projeto=pedido.projeto,
+    )
+    return [
+        {
+            "trecho": a.trecho,
+            "similaridade": round(a.similaridade, 4),
+            "projeto": a.projeto,
+            "agente": a.agente,
+            "titulo": a.titulo,
+            "criado_em": a.criado_em,
+        }
+        for a in achados
+    ]

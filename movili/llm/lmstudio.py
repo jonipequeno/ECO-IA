@@ -82,6 +82,25 @@ class LMStudioProvider(ProvedorLLM):
             bruto=dados,
         )
 
+    def embeddings(self, textos: list[str], *, modelo: str | None = None) -> list[list[float]]:
+        """Vetoriza via /v1/embeddings (formato OpenAI).
+
+        Exige um modelo de embedding carregado no LM Studio - ele nao baixa
+        sozinho como o Ollama.
+        """
+        if not textos:
+            return []
+        dados = self._post(
+            "/embeddings",
+            {"model": modelo or "text-embedding-nomic-embed-text-v1.5", "input": textos},
+        )
+        itens = dados.get("data")
+        if not isinstance(itens, list) or len(itens) != len(textos):
+            raise LLMError(f"[lmstudio] /embeddings devolveu {len(itens or [])} vetores para {len(textos)} textos")
+        # a API nao garante a ordem: reordena por 'index' quando ele vem
+        ordenados = sorted(itens, key=lambda d: d.get("index", 0))
+        return [[float(x) for x in d["embedding"]] for d in ordenados]
+
     def disponivel(self) -> bool:
         try:
             self._get("/models")

@@ -225,5 +225,6 @@ acionável e não promete correção sem validar com a engenharia.
 4. Rode `python -m pytest tests -q` — os testes de estrutura verificam nome próprio,
    missão, KPIs, cobertura dos setores e se os colegas citados existem.
 
-O agente passa a aparecer no organograma, na triagem automática, nas reuniões e como
+O agente passa a aparecer no organograma, na triagem automática, nas reuniões, na
+memória semântica (as entregas dele passam a ser indexadas e recuperáveis) e como
 modelo `movili-<id>` na ponte do OpenJarvis, sem mais nenhuma alteração.

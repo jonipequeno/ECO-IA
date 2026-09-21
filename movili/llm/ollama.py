@@ -48,6 +48,34 @@ class OllamaProvider(ProvedorLLM):
             bruto=dados,
         )
 
+    def embeddings(self, textos: list[str], *, modelo: str | None = None) -> list[list[float]]:
+        """Vetoriza via /api/embed (endpoint em lote do Ollama).
+
+        Cai para /api/embeddings, um texto por vez, em versoes antigas que
+        ainda nao tem o endpoint em lote.
+        """
+        if not textos:
+            return []
+        alvo = modelo or "nomic-embed-text"
+        try:
+            dados = self._post("/api/embed", {"model": alvo, "input": textos})
+        except LLMError as exc:
+            if "404" not in str(exc):
+                raise
+            return [self._embedding_unico(t, alvo) for t in textos]
+
+        vetores = dados.get("embeddings")
+        if not isinstance(vetores, list) or len(vetores) != len(textos):
+            raise LLMError(f"[ollama] /api/embed devolveu {type(vetores)} inesperado para {alvo}")
+        return [[float(x) for x in v] for v in vetores]
+
+    def _embedding_unico(self, texto: str, modelo: str) -> list[float]:
+        dados = self._post("/api/embeddings", {"model": modelo, "prompt": texto})
+        vetor = dados.get("embedding")
+        if not isinstance(vetor, list):
+            raise LLMError(f"[ollama] /api/embeddings sem campo 'embedding' para {modelo}")
+        return [float(x) for x in vetor]
+
     def disponivel(self) -> bool:
         try:
             self._get("/api/tags")
