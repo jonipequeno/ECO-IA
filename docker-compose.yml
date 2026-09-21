@@ -1,0 +1,77 @@
+# =====================================================================
+# Movili Tecnologia - ecossistema completo em containers.
+#
+#   docker compose up -d
+#   docker compose exec movili movili status
+#   docker compose exec movili movili fluxo novo-projeto "sua demanda"
+#
+# O Ollama sobe junto e os modelos ficam em um volume, entao nao
+# baixam de novo a cada restart.
+# =====================================================================
+services:
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: movili-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    # Descomente o bloco abaixo para usar GPU NVIDIA.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # Baixa o modelo padrao da casa na primeira subida e encerra.
+  preparar-modelos:
+    image: ollama/ollama:latest
+    container_name: movili-preparar-modelos
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "ollama pull qwen3:8b &&
+       ollama pull qwen2.5-coder:7b &&
+       ollama pull nomic-embed-text &&
+       echo 'modelos essenciais prontos'"
+    restart: "no"
+
+  movili:
+    build: .
+    container_name: movili-ecossistema
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      MOVILI_OLLAMA_URL: http://ollama:11434
+      MOVILI_BACKEND_PADRAO: ollama
+      MOVILI_MODELO_PADRAO: qwen3:8b
+      MOVILI_DB: /app/data/movili.db
+      MOVILI_WORKSPACE: /app/workspace
+    volumes:
+      - ./workspace:/app/workspace
+      - ./data:/app/data
+      - ./config:/app/config:ro
+    ports:
+      - "8000:8000"   # API FastAPI
+      - "8123:8123"   # ponte OpenJarvis (OpenAI-compativel)
+    # Mantem o container vivo para uso interativo via 'docker compose exec'.
+    command: ["tail", "-f", "/dev/null"]
+    restart: unless-stopped
+
+volumes:
+  ollama_models:

@@ -1,0 +1,316 @@
+# =====================================================================
+# Movili Tecnologia - Configuracao de modelos locais
+# ---------------------------------------------------------------------
+# Backends suportados: Ollama (nativo) e LM Studio (API compativel OpenAI).
+# O padrao de fabrica e qwen3:8b em TODOS os agentes.
+# Para especializar por funcao, use um perfil de hardware:
+#   movili reuniao ... --perfil especializado
+# =====================================================================
+
+timeout: 300          # segundos por chamada de modelo
+tentativas: 2         # novas tentativas antes de cair para o proximo backend
+banco: data/movili.db
+workspace: workspace
+
+backends:
+  ollama:
+    tipo: ollama
+    base_url: http://localhost:11434
+    modelo_padrao: "qwen3:8b"
+    habilitado: true
+
+  lmstudio:
+    tipo: lmstudio
+    base_url: http://localhost:1234/v1
+    modelo_padrao: qwen3-8b        # no LM Studio o id usa hifen, nao dois-pontos
+    habilitado: true
+
+  # Backend de teste: valida fluxos e handoffs sem executar modelo nenhum.
+  simulado:
+    tipo: simulado
+    base_url: ""
+    modelo_padrao: simulado
+    habilitado: true
+
+# Ordem em que o roteador tenta os backends quando o preferido cai.
+# O 'simulado' NAO entra aqui de proposito: ele so roda se for pedido
+# explicitamente (--backend simulado), para nunca mascarar um backend fora do ar.
+ordem_fallback:
+  - ollama
+  - lmstudio
+
+# ---------------------------------------------------------------------
+# Roteamento por agente (padrao de fabrica: qwen3:8b para todos)
+# ---------------------------------------------------------------------
+roteamento:
+  padrao:           {backend: ollama, modelo: "qwen3:8b"}
+  socio_estrategia: {backend: ollama, modelo: "qwen3:8b"}
+  socio_tecnologia: {backend: ollama, modelo: "qwen3:8b"}
+  diretor:          {backend: ollama, modelo: "qwen3:8b"}
+  produto:          {backend: ollama, modelo: "qwen3:8b"}
+  projetos:         {backend: ollama, modelo: "qwen3:8b"}
+  design:       {backend: ollama, modelo: "qwen3:8b"}
+  dev_backend:  {backend: ollama, modelo: "qwen3:8b"}
+  dev_frontend: {backend: ollama, modelo: "qwen3:8b"}
+  dev_mobile:   {backend: ollama, modelo: "qwen3:8b"}
+  dados:        {backend: ollama, modelo: "qwen3:8b"}
+  marketing:    {backend: ollama, modelo: "qwen3:8b"}
+  seo:          {backend: ollama, modelo: "qwen3:8b"}
+  copy:         {backend: ollama, modelo: "qwen3:8b"}
+  prospeccao:   {backend: ollama, modelo: "qwen3:8b"}
+  comercial:    {backend: ollama, modelo: "qwen3:8b"}
+  financeiro:   {backend: ollama, modelo: "qwen3:8b"}
+  juridico:     {backend: ollama, modelo: "qwen3:8b"}
+  seguranca:    {backend: ollama, modelo: "qwen3:8b"}
+  rh:           {backend: ollama, modelo: "qwen3:8b"}
+  cs:           {backend: ollama, modelo: "qwen3:8b"}
+
+# ---------------------------------------------------------------------
+# Perfis de hardware - trocam o modelo de todos os agentes de uma vez.
+# Use: --perfil <nome>. O tamanho e a RAM/VRAM aproximada em quantizacao Q4.
+# ---------------------------------------------------------------------
+perfis_hardware:
+
+  # 8 GB de RAM/VRAM - notebook sem GPU dedicada
+  leve:
+    descricao: "Notebook 8 GB. Roda tudo, com respostas mais curtas e menos nuance."
+    modelo_padrao: "qwen3:4b"
+    agentes:
+      dev_backend: "qwen2.5-coder:7b"
+      dev_frontend: "qwen2.5-coder:7b"
+      dev_mobile: "qwen2.5-coder:7b"
+      seguranca: "qwen2.5-coder:7b"
+      financeiro: "qwen3:4b"
+      copy: "gemma3:4b"
+
+  # 16 GB - maquina de trabalho comum. Este e o ponto de equilibrio.
+  equilibrado:
+    descricao: "16 GB. qwen3:8b na maioria e coder dedicado na engenharia."
+    modelo_padrao: "qwen3:8b"
+    agentes:
+      dev_backend: "qwen2.5-coder:14b"
+      dev_frontend: "qwen2.5-coder:7b"
+      dev_mobile: "qwen2.5-coder:7b"
+      seguranca: "qwen2.5-coder:14b"
+      financeiro: "deepseek-r1:8b"
+      copy: "gemma3:12b"
+      prospeccao: "mistral-nemo:12b"
+
+  # 24-32 GB - o melhor modelo aberto para CADA funcao.
+  especializado:
+    descricao: "24-32 GB. Cada agente usa o modelo em que a funcao dele rende mais."
+    modelo_padrao: "qwen3:14b"
+    agentes:
+      # conselho e diretoria: nuance de decisao e sintese
+      socio_estrategia: "qwen3:14b"     # tese de negocio, horizonte de 5 anos
+      socio_tecnologia: "qwen3:14b"     # build vs buy, custo de manutencao
+      diretor: "qwen3:14b"              # sintese executiva e arbitragem
+      # produto
+      produto: "qwen3:14b"              # problema, hipotese e metrica de sucesso
+      projetos: "qwen3:14b"             # cronograma, caminho critico e risco
+      design: "gemma3:12b"              # descricao visual e linguagem natural rica
+      # engenharia: modelos de codigo
+      dev_backend: "qwen3-coder:30b-a3b"  # MoE: qualidade de 30b com custo de 3b ativo
+      dev_frontend: "qwen2.5-coder:14b"
+      dev_mobile: "qwen2.5-coder:14b"
+      seguranca: "qwen2.5-coder:14b"    # le codigo e arquitetura pelo angulo do atacante
+      dados: "qwen2.5-coder:14b"        # SQL e modelagem dimensional
+      # marketing e comercial
+      marketing: "qwen3:14b"
+      seo: "qwen3:14b"
+      copy: "gemma3:12b"                # melhor escrita natural em pt-BR entre os medios
+      prospeccao: "mistral-nemo:12b"    # textos curtos e cadencia de e-mail
+      comercial: "qwen3:14b"
+      # apoio
+      financeiro: "deepseek-r1:14b"     # raciocinio passo a passo em conta
+      juridico: "mistral-small:24b"     # texto longo e formal, forte em portugues
+      rh: "qwen3:8b"
+      cs: "gemma3:12b"
+
+  # 48 GB+ / workstation com GPU forte
+  maximo:
+    descricao: "48 GB+. Modelos grandes onde a diferenca de qualidade compensa."
+    modelo_padrao: "qwen3:32b"
+    agentes:
+      socio_estrategia: "llama3.3:70b"
+      socio_tecnologia: "qwen3:32b"
+      diretor: "llama3.3:70b"
+      produto: "qwen3:32b"
+      projetos: "qwen3:32b"
+      dev_backend: "qwen3-coder:30b-a3b"
+      dev_frontend: "qwen2.5-coder:32b"
+      dev_mobile: "qwen2.5-coder:32b"
+      seguranca: "qwen2.5-coder:32b"
+      dados: "qwen2.5-coder:32b"
+      financeiro: "deepseek-r1:32b"
+      juridico: "mistral-small:24b"
+      copy: "gemma3:27b"
+      cs: "gemma3:27b"
+
+# ---------------------------------------------------------------------
+# Catalogo de modelos abertos (gratuitos) do Ollama.
+# 'ram' e a memoria aproximada necessaria na quantizacao padrao (Q4_K_M).
+# 'usar_para' e a recomendacao de uso dentro deste ecossistema.
+# Baixe tudo com: ./scripts/baixar_modelos.sh <grupo>
+# ---------------------------------------------------------------------
+catalogo:
+
+  essenciais:
+    descricao: "O minimo para o ecossistema rodar completo."
+    modelos:
+      - nome: qwen3:8b
+        ram: "~6 GB"
+        usar_para: "Padrao da casa. Raciocinio, portugues e uso de ferramenta equilibrados."
+      - nome: qwen2.5-coder:7b
+        ram: "~5 GB"
+        usar_para: "Codigo nos 3 devs quando a maquina e modesta."
+      - nome: nomic-embed-text
+        ram: "~0.3 GB"
+        usar_para: "Embeddings para busca semantica na memoria corporativa (RAG)."
+
+  generalistas:
+    descricao: "Raciocinio, estrategia, escrita e conversa - o grosso dos agentes."
+    modelos:
+      - nome: qwen3:0.6b
+        ram: "~1 GB"
+        usar_para: "Classificacao e roteamento de mensagem. Rapido demais para ser bom em texto."
+      - nome: qwen3:1.7b
+        ram: "~2 GB"
+        usar_para: "Resumo curto e triagem de caixa de entrada."
+      - nome: qwen3:4b
+        ram: "~3 GB"
+        usar_para: "Perfil leve: todos os agentes em maquina de 8 GB."
+      - nome: qwen3:8b
+        ram: "~6 GB"
+        usar_para: "PADRAO. Melhor relacao qualidade/custo para agente de negocio em pt-BR."
+      - nome: qwen3:14b
+        ram: "~10 GB"
+        usar_para: "Diretor, produto, marketing e comercial: decisao com mais nuance."
+      - nome: qwen3:30b-a3b
+        ram: "~19 GB"
+        usar_para: "MoE. Qualidade alta com velocidade de modelo pequeno. Otimo em CPU boa."
+      - nome: qwen3:32b
+        ram: "~20 GB"
+        usar_para: "Perfil maximo: o melhor generalista aberto que roda em uma GPU de 24 GB."
+      - nome: gemma3:4b
+        ram: "~3 GB"
+        usar_para: "Copy e CS em maquina leve. Escrita natural acima do peso."
+      - nome: gemma3:12b
+        ram: "~8 GB"
+        usar_para: "MELHOR para copy, design e customer success: texto fluido em pt-BR."
+      - nome: gemma3:27b
+        ram: "~17 GB"
+        usar_para: "Copy premium e material de marca. Tambem le imagem."
+      - nome: llama3.1:8b
+        ram: "~5 GB"
+        usar_para: "Alternativa ao qwen3:8b com function calling nativo maduro."
+      - nome: llama3.2:3b
+        ram: "~2 GB"
+        usar_para: "Tarefas auxiliares e sumarizacao em lote."
+      - nome: llama3.3:70b
+        ram: "~43 GB"
+        usar_para: "Perfil maximo: sintese executiva do diretor em workstation."
+      - nome: mistral-nemo:12b
+        ram: "~7 GB"
+        usar_para: "MELHOR para prospeccao: e-mail curto, cadencia e tom comercial."
+      - nome: mistral-small:24b
+        ram: "~14 GB"
+        usar_para: "MELHOR para juridico: texto longo, formal e preciso em portugues."
+      - nome: phi4:14b
+        ram: "~9 GB"
+        usar_para: "Raciocinio logico compacto. Boa segunda opiniao para o financeiro."
+      - nome: granite3.3:8b
+        ram: "~5 GB"
+        usar_para: "RAG corporativo e resposta ancorada em documento."
+
+  raciocinio:
+    descricao: "Modelos que pensam passo a passo - conta, analise e auditoria."
+    modelos:
+      - nome: deepseek-r1:8b
+        ram: "~5 GB"
+        usar_para: "Financeiro em maquina de 16 GB: precificacao e margem."
+      - nome: deepseek-r1:14b
+        ram: "~9 GB"
+        usar_para: "MELHOR para o financeiro: memoria de calculo aberta e consistente."
+      - nome: deepseek-r1:32b
+        ram: "~20 GB"
+        usar_para: "Auditoria de numero e analise de viabilidade complexa."
+      - nome: qwq:32b
+        ram: "~20 GB"
+        usar_para: "Problema logico longo. Lento: use so quando a resposta importa mais que o tempo."
+
+  codigo:
+    descricao: "Os tres desenvolvedores e a analista de dados."
+    modelos:
+      - nome: qwen2.5-coder:1.5b
+        ram: "~1 GB"
+        usar_para: "Autocomplete e FIM em editor. Nao use como agente."
+      - nome: qwen2.5-coder:7b
+        ram: "~5 GB"
+        usar_para: "Frontend e mobile em maquina de 16 GB."
+      - nome: qwen2.5-coder:14b
+        ram: "~9 GB"
+        usar_para: "MELHOR custo/beneficio para os 3 devs e para SQL da analista de dados."
+      - nome: qwen2.5-coder:32b
+        ram: "~20 GB"
+        usar_para: "Perfil maximo: codigo de producao e revisao de arquitetura."
+      - nome: qwen3-coder:30b-a3b
+        ram: "~19 GB"
+        usar_para: "MELHOR para o arquiteto backend: MoE rapido, forte em agente e ferramenta."
+      - nome: deepseek-coder-v2:16b
+        ram: "~9 GB"
+        usar_para: "Alternativa forte em refatoracao e linguagens menos comuns."
+      - nome: codegemma:7b
+        ram: "~5 GB"
+        usar_para: "Geracao de trecho e conversao entre linguagens."
+      - nome: starcoder2:7b
+        ram: "~4 GB"
+        usar_para: "Completar codigo em base legada com muita linguagem diferente."
+      - nome: sqlcoder:15b
+        ram: "~9 GB"
+        usar_para: "SQL puro: a analista de dados usa para consulta complexa."
+
+  embeddings:
+    descricao: "Busca semantica na memoria corporativa (RAG interno)."
+    modelos:
+      - nome: nomic-embed-text
+        ram: "~0.3 GB"
+        usar_para: "Padrao: rapido, 8k de contexto, bom em portugues."
+      - nome: mxbai-embed-large
+        ram: "~0.7 GB"
+        usar_para: "Recuperacao com mais precisao quando a base cresce."
+      - nome: bge-m3
+        ram: "~1.2 GB"
+        usar_para: "Multilingue e busca hibrida (denso + esparso)."
+      - nome: all-minilm
+        ram: "~0.1 GB"
+        usar_para: "Prototipo e teste: leve e descartavel."
+
+  visao:
+    descricao: "Leitura de print, mockup, documento escaneado e criativo de midia."
+    modelos:
+      - nome: llama3.2-vision:11b
+        ram: "~8 GB"
+        usar_para: "Design e marketing: analisar mockup e criativo de anuncio."
+      - nome: llava:13b
+        ram: "~8 GB"
+        usar_para: "Descricao geral de imagem e print de tela."
+      - nome: minicpm-v:8b
+        ram: "~6 GB"
+        usar_para: "OCR e leitura de documento (nota, contrato escaneado)."
+      - nome: moondream
+        ram: "~2 GB"
+        usar_para: "Visao leve para triagem rapida de imagem."
+
+  leves:
+    descricao: "Tarefas de apoio: roteamento, classificacao e rotulagem em lote."
+    modelos:
+      - nome: llama3.2:1b
+        ram: "~1 GB"
+        usar_para: "Classificar prioridade de mensagem no barramento."
+      - nome: smollm2:1.7b
+        ram: "~1.5 GB"
+        usar_para: "Extrair campos estruturados de texto curto."
+      - nome: gemma3:1b
+        ram: "~1 GB"
+        usar_para: "Titulo e tag de thread."

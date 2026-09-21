@@ -1,0 +1,182 @@
+# Guia de uso
+
+## Primeiro dia
+
+```bash
+./scripts/instalar.sh completo
+source .venv/bin/activate
+
+ollama serve &                            # em outro terminal, de preferência
+./scripts/baixar_modelos.sh essenciais
+
+movili status                             # confirma backend e modelos
+python scripts/verificar.py               # diagnóstico da estrutura
+movili equipe                             # conheça o time
+```
+
+---
+
+## Falar com uma pessoa
+
+```bash
+movili agente financeiro "precifique um projeto de 1200 horas com squad de 4 pessoas"
+movili agente seguranca "modele as ameaças de uma API pública de pagamentos"
+movili agente copy "3 headlines para a landing de modernização de legado"
+movili agente projetos "cronograma de 16 semanas para um app com backend e admin"
+```
+
+O agente pode acionar colegas sozinho durante a entrega. O relatório mostra quem foi
+chamado e o que respondeu.
+
+---
+
+## Rodar um processo completo
+
+```bash
+movili fluxo novo-projeto "transportadora com 80 caminhões quer app de roteirização \
+  e rastreamento, integrado ao ERP Protheus, prazo de 4 meses"
+```
+
+O que acontece, em ordem: o comercial qualifica e traduz em briefing técnico → o
+arquiteto propõe arquitetura e estima horas → a PM define MVP e critérios de aceite →
+segurança modela ameaças → design especifica as telas → frontend e mobile estimam em
+paralelo → o PMO monta cronograma e riscos → RH confere capacidade → o financeiro
+precifica com a conta aberta → o jurídico aponta cláusulas → o comercial monta a
+proposta final → o CEO aprova, ajusta ou reprova.
+
+Saída em `workspace/<projeto>/`:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `relatorio.md` | todas as entregas em ordem, com a consolidação do CEO |
+| `resultado.json` | o mesmo, estruturado, para integrar em outro sistema |
+| `conversas.json` | o tráfego completo do barramento, para auditoria |
+
+---
+
+## Convocar uma reunião
+
+```bash
+movili reuniao "vale a pena criar um produto SaaS próprio?" --rodadas 3
+movili reuniao "revisão de segurança do trimestre" --setor engenharia
+movili reuniao "proposta do cliente X está abaixo da margem" \
+  --participantes comercial,financeiro,diretor,socio_estrategia
+```
+
+Setores disponíveis: `socios`, `diretoria`, `produto`, `engenharia`, `dados`,
+`marketing`, `comercial`, `financeiro`, `juridico`, `seguranca`, `pessoas`,
+`sucesso_do_cliente`.
+
+Na primeira rodada cada um traz a posição da sua área. Da segunda em diante, responde a
+quem citou sua área, diz onde discorda e assume um compromisso. O CEO fecha com a ata.
+
+> **Custo.** Uma reunião de 3 rodadas com 8 participantes são 25 chamadas de modelo.
+> Em `qwen3:8b` num notebook, conte alguns minutos. Comece com `--rodadas 2` e um
+> `--setor` em vez da empresa inteira.
+
+---
+
+## Deixar a diretoria decidir
+
+```bash
+movili atender "cliente quer integrar ERP com marketplace em 90 dias"
+movili atender "queda de 30% no tráfego orgânico no último mês" --maximo 4
+```
+
+O CEO faz a triagem, escala quem precisa atuar, roda e consolida.
+
+---
+
+## Conversar por voz
+
+```bash
+movili jarvis --diagnostico     # o que está instalado
+movili jarvis                   # inicia
+movili jarvis --stt teclado     # digita e ouve a resposta
+movili jarvis --frases 6        # respostas faladas um pouco mais longas
+```
+
+Frases que funcionam:
+
+- "chama a Patrícia e pergunta a margem de um projeto de duzentos mil"
+- "monta uma proposta para um app de logística"
+- "convoca uma reunião sobre entrar no mercado de saúde"
+- "quem trabalha aqui"
+- "sair"
+
+---
+
+## Ligar um cliente externo
+
+```bash
+movili ponte --porta 8123
+```
+
+Aponte qualquer cliente OpenAI-compatível para `http://127.0.0.1:8123/v1` e escolha o
+"modelo": `movili-jarvis`, `movili-empresa` ou `movili-<agente>`.
+
+```python
+from openai import OpenAI
+
+cliente = OpenAI(base_url="http://127.0.0.1:8123/v1", api_key="nao-usada")
+r = cliente.chat.completions.create(
+    model="movili-seguranca",
+    messages=[{"role": "user", "content": "revise a arquitetura de autenticação por JWT"}],
+)
+print(r.choices[0].message.content)
+```
+
+---
+
+## Ajustar a empresa à sua realidade
+
+Edite `config/empresa.yaml`: nome, posicionamento, público-alvo, stack, tom de voz,
+custo/hora, margem mínima, metas e **regras da casa**. Todo agente passa a operar com
+esse contexto.
+
+As regras da casa têm efeito prático. Com
+
+```yaml
+regras_da_casa:
+  - Nenhum preço é comunicado ao cliente sem validação do financeiro
+```
+
+o comercial passa a acionar a Patricia antes de fechar qualquer número — não porque
+alguém programou o fluxo, mas porque a regra está no prompt dele.
+
+---
+
+## Trocar de modelo
+
+```bash
+movili fluxo novo-projeto "..." --perfil especializado       # melhor por função
+movili reuniao "..." --modelo qwen3:14b                      # um modelo para todos
+movili agente dev_backend "..." --modelo qwen3-coder:30b-a3b # só nesta chamada
+movili status --backend lmstudio                             # trocar de backend
+```
+
+Veja [MODELOS.md](MODELOS.md) para a justificativa de cada escolha.
+
+---
+
+## Problemas comuns
+
+**"nenhum backend respondeu"** — o Ollama não está rodando (`ollama serve`) ou o LM
+Studio não iniciou o servidor (Developer → Start Server). Confirme com `movili status`.
+
+**"model not found"** — o modelo configurado não foi baixado. `movili status` lista o que
+existe; `python scripts/verificar.py` aponta o que falta. Baixe com
+`./scripts/baixar_modelos.sh <grupo>`.
+
+**Resposta com `<think>`** — não deveria acontecer: o ecossistema limpa esses blocos. Se
+aparecer, abra uma issue com o modelo e o comando usados.
+
+**Muito lento** — use `--perfil leve`, reduza `--rodadas`, limite `--maximo` na triagem
+ou escolha um `--setor` em vez da empresa toda.
+
+**Fluxo travou no meio** — cada etapa tem timeout de 300s (ajustável em
+`MOVILI_TIMEOUT`). Modelo grande em CPU pode estourar; reduza o modelo ou aumente o
+timeout.
+
+**Testar sem modelo nenhum** — `--backend simulado` valida todo o encanamento sem
+executar modelo. As respostas vêm marcadas como `[RESPOSTA SIMULADA]`.

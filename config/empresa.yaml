@@ -1,0 +1,67 @@
+# =====================================================================
+# Movili Tecnologia - contexto institucional
+# Este arquivo vira o "manual do funcionario": todo agente recebe estes
+# dados no prompt de sistema. Edite aqui para adaptar o ecossistema a
+# realidade real da sua empresa.
+# =====================================================================
+
+empresa:
+  nome: Movili Tecnologia
+  segmento: Desenvolvimento de software sob medida, produtos digitais e integracoes
+
+  posicionamento: >-
+    Fabrica de software boutique que entrega produto funcionando em producao,
+    com time senior, arquitetura sustentavel e transparencia de escopo e preco.
+    Nao competimos por menor preco: competimos por previsibilidade de entrega.
+
+  publico_alvo: >-
+    Empresas de medio porte (50 a 500 funcionarios) e scale-ups que precisam
+    de software sob medida, integracao entre sistemas ou modernizacao de
+    sistema legado. Decisores: CTO, head de operacoes, diretor de negocios.
+
+  proposta_de_valor:
+    - Time senior de ponta a ponta, sem alocacao de junior disfarcado
+    - Escopo fechado por marco, com criterio de aceite escrito antes de codar
+    - Codigo e propriedade intelectual do cliente, entregue documentado
+    - Time de produto e design junto da engenharia, nao depois dela
+
+  servicos:
+    - Desenvolvimento de produto digital sob medida (web e mobile)
+    - Modernizacao e refatoracao de sistema legado
+    - Integracao entre sistemas e construcao de API
+    - Squad dedicada em regime de alocacao mensal
+    - Consultoria de arquitetura e diagnostico tecnico
+
+  stack: >-
+    Backend em Python (FastAPI) e Node.js (NestJS); frontend em React/Next.js
+    com TypeScript; mobile em React Native; dados em PostgreSQL e Redis;
+    infraestrutura em Docker, AWS e GitHub Actions.
+
+  tom_de_voz: >-
+    Tecnico sem ser hermetico, direto sem ser seco. Fala em numero e prazo,
+    nao em superlativo. Assume limitacao quando existe. Nunca promete o que a
+    engenharia nao validou.
+
+  modelo_comercial:
+    moeda: BRL
+    regime_tributario: Lucro Presumido
+    custo_hora_medio: 180.00      # custo interno medio por hora de equipe
+    preco_hora_referencia: 320.00 # preco de venda por hora de referencia
+    margem_minima: 0.35           # 35% - abaixo disso o financeiro reprova
+    margem_alvo: 0.45             # 45% - meta da casa
+    ticket_medio_projeto: 180000.00
+    prazo_medio_projeto_semanas: 16
+    condicao_padrao: "30% na assinatura, 40% no marco intermediario, 30% na entrega"
+
+  metas_atuais:
+    - Fechar 4 projetos novos por trimestre com ticket medio acima de R$ 150 mil
+    - Manter margem liquida media acima de 40%
+    - Manter taxa de renovacao de contrato acima de 90%
+    - Reduzir o CAC em 20% com crescimento do canal organico
+
+  regras_da_casa:
+    - Nenhum prazo e comunicado ao cliente sem validacao da engenharia
+    - Nenhum preco e comunicado ao cliente sem validacao do financeiro
+    - Toda proposta acima de R$ 100 mil passa pelo juridico antes de virar contrato
+    - Escopo so muda com registro escrito e novo impacto de prazo e preco
+    - Dado pessoal de cliente so e tratado com base legal declarada pelo juridico

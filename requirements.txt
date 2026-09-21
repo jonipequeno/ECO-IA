@@ -1,0 +1,4 @@
+# Nucleo do ecossistema Movili.
+# A camada de LLM usa apenas a biblioteca padrao (urllib), entao a unica
+# dependencia obrigatoria e o leitor de YAML da configuracao.
+PyYAML>=6.0

@@ -1,0 +1,10 @@
+# Voz do OpenJarvis (opcional). Sem isto o Jarvis roda em modo texto.
+-r requirements.txt
+
+# Fala (TTS) - vozes neurais locais, com pt-BR
+piper-tts>=1.2
+
+# Escuta (STT) - transcricao local do microfone
+faster-whisper>=1.0
+sounddevice>=0.4
+numpy>=1.24

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "movili-ecossistema"
+version = "1.0.0"
+description = "Ecossistema de agentes de IA da Movili Tecnologia, rodando 100% local em Ollama e LM Studio"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+keywords = ["agentes", "ia", "ollama", "lm-studio", "qwen3", "multiagente", "openjarvis"]
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.110", "uvicorn[standard]>=0.29", "pydantic>=2.6"]
+voz = ["piper-tts>=1.2", "faster-whisper>=1.0", "sounddevice>=0.4", "numpy>=1.24"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+movili = "movili.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["movili*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
