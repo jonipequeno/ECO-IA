@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from movili import agentes as quadro
 from movili import fluxos as processos
-from movili.core.mensagem import Tipo
+from movili.core.mensagem import Prioridade, Tipo
 
 
 def test_prompt_de_sistema_tem_persona_e_empresa(eco):
@@ -34,6 +36,49 @@ def test_delegar_registra_ida_e_volta_no_barramento(eco_pequeno):
     assert len(historico) == 2
     assert historico[0].tipo is Tipo.TAREFA
     assert historico[1].tipo is Tipo.ENTREGA
+
+
+def test_delegar_publica_alerta_quando_o_agente_falha(eco_pequeno):
+    """Sem isto, uma falha e muda: nada volta ao barramento.
+
+    Antes desta correcao, quando agente.responder() levantava excecao, a
+    funcao saia de delegar() antes da linha que publica a entrega - sucesso
+    OU falha. Quem olhava o barramento (o painel, a rede, a memoria) via
+    so o pedido saindo, nunca um retorno. Na pratica: a interface mostrava a
+    pergunta enviada e depois nada, para sempre - "o sistema nao responde".
+    """
+    from movili.llm.base import LLMIndisponivel
+
+    agente = eco_pequeno.agente("financeiro")
+    mensagem_erro = "backend fora do ar: connection refused"
+    agente.responder = lambda *a, **k: (_ for _ in ()).throw(LLMIndisponivel(mensagem_erro))
+
+    with pytest.raises(LLMIndisponivel, match=mensagem_erro):
+        eco_pequeno.delegar("financeiro", "qual a margem minima?", projeto="p-falha")
+
+    historico = eco_pequeno.barramento.por_projeto("p-falha")
+    alertas = [m for m in historico if m.tipo is Tipo.ALERTA]
+    assert len(alertas) == 1, "a falha precisa deixar rastro no barramento"
+
+    alerta = alertas[0]
+    assert alerta.remetente == "financeiro"
+    assert alerta.prioridade is Prioridade.ALTA
+    assert mensagem_erro in alerta.conteudo
+
+
+def test_falha_de_agente_nao_impede_o_worker_de_seguir(eco_pequeno):
+    """O worker do painel processa tarefas em fila: uma que falha nao pode travar as seguintes."""
+    from movili.llm.base import LLMIndisponivel
+
+    agente = eco_pequeno.agente("financeiro")
+    agente.responder = lambda *a, **k: (_ for _ in ()).throw(LLMIndisponivel("fora do ar"))
+
+    with pytest.raises(LLMIndisponivel):
+        eco_pequeno.delegar("financeiro", "primeira", projeto="p1")
+
+    # o proximo delegar, a outro agente saudavel, funciona normalmente
+    resultado = eco_pequeno.delegar("copy", "segunda", projeto="p2")
+    assert resultado.entrega
 
 
 def test_entregavel_fica_na_memoria_corporativa(eco_pequeno):

@@ -137,6 +137,24 @@ def test_entrega_para_fora_fica_registrada_no_agente():
     assert ev["dados"]["tipo"] == "entrega"
 
 
+def test_alerta_de_falha_fica_registrado_no_agente():
+    """O mesmo caminho de test_entrega_para_fora_fica_registrada_no_agente,
+
+    mas para o que a delegacao publica quando o agente falha (ver
+    Ecossistema.delegar em core/orquestrador.py). Sem isto, uma falha nunca
+    aparece na rede - o pedido sai e nada volta, silencio que parece "o
+    sistema nao responde" quando na verdade so falhou.
+    """
+    ev = rede.evento_da_mensagem(
+        _msg(de="financeiro", para="painel", tipo=Tipo.ALERTA, prioridade=Prioridade.ALTA),
+        AGENTES,
+    )
+    assert ev["acao"] == "registrar"
+    assert ev["dados"]["de"] == "financeiro" and ev["dados"]["para"] is None
+    assert ev["dados"]["tipo"] == "alerta"
+    assert ev["dados"]["prioridade"] == "alta"
+
+
 def test_texto_e_resumido_em_140():
     ev = rede.evento_da_mensagem(_msg(assunto="palavra " * 60), AGENTES)
     assert len(ev["dados"]["texto"]) <= 140 and ev["dados"]["texto"].endswith("...")

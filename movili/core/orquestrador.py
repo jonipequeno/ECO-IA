@@ -266,9 +266,25 @@ class Ecossistema:
         self._log(f"\n>> {agente.perfil.nome} ({agente.perfil.cargo}) trabalhando...")
 
         contexto = self._com_memoria(contexto, instrucao, ident, projeto)
-        entrega = agente.responder(
-            instrucao, contexto=contexto, colegas=self.diretorio(exceto=ident)
-        )
+        try:
+            entrega = agente.responder(
+                instrucao, contexto=contexto, colegas=self.diretorio(exceto=ident)
+            )
+        except Exception as exc:
+            # Sem isto, uma falha (Ollama fora do ar, timeout, o que for) e
+            # muda: nada volta ao barramento, entao quem olha a rede ou o
+            # feed classico nao ve nada alem do pedido que saiu - parece que
+            # o sistema nao respondeu, quando na verdade so falhou. Publicar
+            # um alerta antes de repropagar mantem "todo trabalho deixa
+            # rastro" valendo tambem para o caminho de erro; CLI, painel e
+            # quem mais chama delegar() continuam recebendo a excecao normal.
+            self.barramento.enviar(
+                ident, remetente, f"Re: {tarefa.assunto}", str(exc),
+                tipo=Tipo.ALERTA, prioridade=Prioridade.ALTA,
+                thread=tarefa.thread, projeto=projeto,
+            )
+            self._log(f"<< {agente.perfil.nome} falhou: {exc}")
+            raise
         duracao = (datetime.now(timezone.utc) - inicio).total_seconds()
 
         self.barramento.enviar(
