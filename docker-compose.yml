@@ -47,6 +47,9 @@ services:
       "ollama pull qwen3:8b &&
        ollama pull qwen2.5-coder:7b &&
        ollama pull nomic-embed-text &&
+       ollama pull qwen3:4b-instruct &&
+       ollama pull gemma3:4b &&
+       ollama pull qwen2.5-coder:3b &&
        echo 'modelos essenciais prontos'"
     restart: "no"
 
@@ -63,6 +66,10 @@ services:
       MOVILI_DB: /app/data/movili.db
       MOVILI_WORKSPACE: /app/workspace
       MOVILI_OBSIDIAN: /app/obsidian
+      # Sem GPU: modelos de 3-4b por area (config/modelos.yaml -> perfis_hardware.cpu).
+      # Com GPU de 16 GB ou mais, troque por "equilibrado" ou apague a linha.
+      MOVILI_PERFIL: cpu
+      MOVILI_TIMEOUT: "600"
     volumes:
       - ./workspace:/app/workspace
       - ./data:/app/data

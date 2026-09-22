@@ -11,6 +11,9 @@ class OllamaProvider(ProvedorLLM):
     """Cliente do Ollama. Padrao: http://localhost:11434 com qwen3:8b."""
 
     nome = "ollama"
+    # False manda "think": false - o modelo responde direto, sem gerar o
+    # raciocinio que limpar_raciocinio() jogaria fora. Ver ConfigBackend.
+    raciocinio = False
 
     def chat(
         self,
@@ -25,6 +28,7 @@ class OllamaProvider(ProvedorLLM):
             "model": modelo or self.modelo,
             "messages": self._normalizar(mensagens),
             "stream": False,
+            "think": bool(self.raciocinio),
             "options": {
                 "temperature": temperatura,
                 "num_predict": max_tokens,

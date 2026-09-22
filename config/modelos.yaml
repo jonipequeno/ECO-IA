@@ -43,6 +43,9 @@ backends:
     base_url: http://localhost:11434
     modelo_padrao: "qwen3:8b"
     habilitado: true
+    # Raciocinio <think> do qwen3/deepseek-r1: o texto pensado e descartado,
+    # so custa tempo (4x mais lento em CPU). Ligue so se quiser testar.
+    raciocinio: false
 
   lmstudio:
     tipo: lmstudio
@@ -96,16 +99,57 @@ roteamento:
 # ---------------------------------------------------------------------
 perfis_hardware:
 
+  # Sem GPU: tudo roda no processador, e o gargalo e velocidade, nao memoria.
+  # Medido num i5-11300H (4 nucleos): qwen3:8b gera ~2,4 tokens/s e estoura o
+  # timeout em resposta de agente. Aqui so entram modelos de 3-4b, o melhor
+  # gratuito de cada area nesse tamanho:
+  #   qwen3:4b-instruct - raciocinio, sintese e decisao (lideranca, produto, numeros).
+  #                       A tag 'qwen3:4b' virou a versao Thinking 2507, que sempre
+  #                       raciocina e ignora think:false - levou mais de 600 s aqui.
+  #   gemma3:4b         - escrita natural em portugues (marketing, vendas, design, CS)
+  #   qwen2.5-coder:3b  - codigo e arquitetura (engenharia e seguranca)
+  cpu:
+    descricao: "Sem GPU. Modelos de 3-4b, o melhor de cada area, para responder em tempo util."
+    modelo_padrao: "qwen3:4b-instruct"
+    # Teto por resposta: a ~4,5 tokens/s, 700 tokens (umas 500 palavras) levam
+    # cerca de 3 minutos com o prompt. Os 2048 da ficha levariam 7.
+    max_tokens: 700
+    agentes:
+      # conselho, diretoria e produto: decisao, sintese, cronograma
+      socio_estrategia: "qwen3:4b-instruct"
+      socio_tecnologia: "qwen3:4b-instruct"
+      diretor: "qwen3:4b-instruct"
+      produto: "qwen3:4b-instruct"
+      projetos: "qwen3:4b-instruct"
+      design: "gemma3:4b"             # descricao visual em linguagem natural
+      # engenharia e seguranca: modelo de codigo
+      dev_backend: "qwen2.5-coder:3b"
+      dev_frontend: "qwen2.5-coder:3b"
+      dev_mobile: "qwen2.5-coder:3b"
+      seguranca: "qwen2.5-coder:3b"
+      # numeros e regras: precisa de raciocinio, nao de estilo
+      dados: "qwen3:4b-instruct"
+      financeiro: "qwen3:4b-instruct"
+      juridico: "qwen3:4b-instruct"
+      # texto que o cliente le: fluencia em portugues pesa mais
+      marketing: "gemma3:4b"
+      seo: "gemma3:4b"
+      copy: "gemma3:4b"
+      prospeccao: "gemma3:4b"
+      comercial: "gemma3:4b"
+      rh: "gemma3:4b"
+      cs: "gemma3:4b"
+
   # 8 GB de RAM/VRAM - notebook sem GPU dedicada
   leve:
     descricao: "Notebook 8 GB. Roda tudo, com respostas mais curtas e menos nuance."
-    modelo_padrao: "qwen3:4b"
+    modelo_padrao: "qwen3:4b-instruct"
     agentes:
       dev_backend: "qwen2.5-coder:7b"
       dev_frontend: "qwen2.5-coder:7b"
       dev_mobile: "qwen2.5-coder:7b"
       seguranca: "qwen2.5-coder:7b"
-      financeiro: "qwen3:4b"
+      financeiro: "qwen3:4b-instruct"
       copy: "gemma3:4b"
 
   # 16 GB - maquina de trabalho comum. Este e o ponto de equilibrio.
@@ -204,7 +248,10 @@ catalogo:
         usar_para: "Resumo curto e triagem de caixa de entrada."
       - nome: qwen3:4b
         ram: "~3 GB"
-        usar_para: "Perfil leve: todos os agentes em maquina de 8 GB."
+        usar_para: "Versao Thinking 2507: sempre raciocina, mesmo com think:false. Lenta demais como agente em CPU; prefira qwen3:4b-instruct."
+      - nome: qwen3:4b-instruct
+        ram: "~3 GB"
+        usar_para: "Perfis leve e cpu: lideranca, produto, financeiro e juridico em maquina sem GPU. Responde direto, sem raciocinio."
       - nome: qwen3:8b
         ram: "~6 GB"
         usar_para: "PADRAO. Melhor relacao qualidade/custo para agente de negocio em pt-BR."
@@ -270,6 +317,9 @@ catalogo:
       - nome: qwen2.5-coder:1.5b
         ram: "~1 GB"
         usar_para: "Autocomplete e FIM em editor. Nao use como agente."
+      - nome: qwen2.5-coder:3b
+        ram: "~2 GB"
+        usar_para: "Perfil cpu: engenharia e seguranca em maquina sem GPU. Codigo e revisao de arquitetura com metade do custo do 7b."
       - nome: qwen2.5-coder:7b
         ram: "~5 GB"
         usar_para: "Frontend e mobile em maquina de 16 GB."

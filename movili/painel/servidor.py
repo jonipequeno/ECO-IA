@@ -227,10 +227,12 @@ class Central:
                 tarefa.estado, tarefa.erro = "erro", str(exc)
             except Exception as exc:
                 # Inesperado: o rastro vai para o log do servidor, senao nao ha
-                # como depurar um worker que roda em segundo plano.
-                tarefa.estado = "erro"
-                tarefa.erro = f"{type(exc).__name__}: {exc}"
+                # como depurar um worker que roda em segundo plano. Imprime
+                # ANTES de marcar o estado: quem espera o "erro" (outra thread)
+                # ja pode ler o log e nao achar o rastro ainda.
                 traceback.print_exc()
+                tarefa.erro = f"{type(exc).__name__}: {exc}"
+                tarefa.estado = "erro"
             self._cliente_atual = None
             tarefa.concluida_em = _agora()
             self.emitir("tarefa", tarefa.to_dict())

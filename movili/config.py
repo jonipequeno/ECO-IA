@@ -29,6 +29,7 @@ ENV_WORKSPACE = "MOVILI_WORKSPACE"
 ENV_EMBEDDINGS = "MOVILI_EMBEDDINGS"      # "0" desliga a memoria semantica
 ENV_MODELO_EMBED = "MOVILI_MODELO_EMBEDDING"
 ENV_OBSIDIAN = "MOVILI_OBSIDIAN"          # pasta do cofre; vazio desliga
+ENV_PERFIL = "MOVILI_PERFIL"              # perfil de hardware padrao (o --perfil vence)
 
 
 def _ler_arquivo(caminho: Path) -> dict[str, Any]:
@@ -59,6 +60,9 @@ class Config:
     workspace: str = "workspace"
     obsidian: str = ""  # pasta do cofre do Obsidian; vazio desliga a exportacao
     tentativas: int = 2
+    # Teto de tokens por resposta, vindo do perfil de hardware. Em CPU, a
+    # 4-5 tokens/s, os 2048 da ficha viram 7 minutos por agente.
+    teto_tokens: int | None = None
 
     def modelo_do_agente(self, agente: str) -> tuple[str | None, str | None]:
         """Devolve (backend, modelo) configurados para um agente."""
@@ -86,6 +90,8 @@ class Config:
         if padrao:
             for cfg in self.backends.values():
                 cfg.modelo_padrao = padrao
+        if preset.get("max_tokens"):
+            self.teto_tokens = int(preset["max_tokens"])
         return self
 
 
@@ -115,6 +121,7 @@ def carregar(
             modelo_padrao=os.getenv(ENV_MODELO, dados.get("modelo_padrao", "qwen3:8b")),
             timeout=int(dados.get("timeout", timeout_padrao)),
             habilitado=bool(dados.get("habilitado", True)),
+            raciocinio=bool(dados.get("raciocinio", False)),
         )
 
     if not backends:
@@ -165,6 +172,7 @@ def carregar(
         # no modo simulado a vetorizacao tambem e simulada, pelo mesmo provedor
         cfg.embeddings["backend"] = "simulado"
 
+    perfil_hardware = perfil_hardware or os.getenv(ENV_PERFIL) or None
     if perfil_hardware:
         cfg.aplicar_perfil_hardware(perfil_hardware)
     if modelo_forcado:  # o override manual vence o preset de hardware

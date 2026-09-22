@@ -27,6 +27,22 @@ def test_normalizacao_aceita_dataclass_e_dict():
         OllamaProvider._normalizar(["texto solto"])
 
 
+@pytest.mark.parametrize("raciocinio", [False, True])
+def test_ollama_manda_o_think_configurado(monkeypatch, raciocinio):
+    """Sem 'think': false o qwen3 gera o raciocinio que limpar_raciocinio() descarta."""
+    enviado = {}
+
+    def post(_self, rota, payload):
+        enviado.update(payload)
+        return {"message": {"content": "ok"}, "model": payload["model"]}
+
+    monkeypatch.setattr(OllamaProvider, "_post", post)
+    provedor = ConfigBackend(tipo="ollama", base_url="http://x", modelo_padrao="qwen3:4b",
+                             raciocinio=raciocinio).construir()
+    provedor.chat([{"role": "user", "content": "oi"}])
+    assert enviado["think"] is raciocinio
+
+
 def test_urls_sao_normalizadas():
     assert OllamaProvider("http://localhost:11434/", "qwen3:8b").base_url == "http://localhost:11434"
     assert LMStudioProvider("http://localhost:1234/v1/", "qwen3-8b").base_url == "http://localhost:1234/v1"

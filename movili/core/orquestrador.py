@@ -174,6 +174,8 @@ class Ecossistema:
             backend, modelo = config.modelo_do_agente(ident)
             perfil.backend = backend or perfil.backend
             perfil.modelo = modelo or perfil.modelo
+            if config.teto_tokens:
+                perfil.max_tokens = min(perfil.max_tokens, config.teto_tokens)
             self.agentes[ident] = Agente(
                 perfil,
                 self.roteador,

@@ -115,6 +115,10 @@ class ConfigBackend:
     modelo_padrao: str
     timeout: int = 300
     habilitado: bool = True
+    # Modo de raciocinio (<think>) de modelos como qwen3 e deepseek-r1. O texto
+    # pensado e descartado por limpar_raciocinio() - so custa tempo. Medido no
+    # qwen3:8b em CPU: 32 s sem raciocinio contra 142 s com, mesma pergunta.
+    raciocinio: bool = False
 
     def construir(self) -> ProvedorLLM:
         if self.tipo == "simulado":
@@ -124,7 +128,9 @@ class ConfigBackend:
             raise ValueError(
                 f"backend '{self.tipo}' desconhecido; use um de: {', '.join(sorted(PROVEDORES))}"
             )
-        return classe(self.base_url, self.modelo_padrao, self.timeout)
+        provedor = classe(self.base_url, self.modelo_padrao, self.timeout)
+        provedor.raciocinio = self.raciocinio
+        return provedor
 
 
 class RoteadorLLM:

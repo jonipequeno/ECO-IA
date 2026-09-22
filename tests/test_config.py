@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from movili import agentes as quadro
@@ -51,6 +53,46 @@ def test_perfis_de_hardware_cobrem_o_quadro():
     esp = cfg.perfis_hardware["especializado"]["agentes"]
     faltando = [i for i in quadro.REGISTRO if i not in esp]
     assert not faltando, f"perfil especializado nao cobre: {faltando}"
+
+
+def test_perfil_cpu_cobre_o_quadro_so_com_modelos_leves_do_catalogo():
+    """Sem GPU, 8b ja estoura o timeout: o perfil cpu so pode ter modelos de ate 4b."""
+    cfg = carregar()
+    cpu = cfg.perfis_hardware["cpu"]["agentes"]
+    assert set(cpu) == set(quadro.REGISTRO)
+    no_catalogo = {m["nome"] for g in cfg.catalogo.values() for m in g.get("modelos", [])}
+    for agente, modelo in cpu.items():
+        assert modelo in no_catalogo, f"{agente}: {modelo} fora do catalogo"
+        tamanho = float(re.match(r"(\d+(?:\.\d+)?)b", modelo.split(":")[1]).group(1))
+        assert tamanho <= 4, f"{agente}: {modelo} pesado demais para CPU"
+        # a tag qwen3:4b e a versao Thinking: ignora think:false e estourou 600 s
+        assert modelo != "qwen3:4b", f"{agente}: use qwen3:4b-instruct"
+    assert cpu["dev_backend"].startswith("qwen2.5-coder")
+    assert cpu["copy"].startswith("gemma3")
+
+
+def test_perfil_vem_da_variavel_de_ambiente_e_o_argumento_vence(monkeypatch):
+    monkeypatch.setenv("MOVILI_PERFIL", "cpu")
+    assert carregar().modelo_do_agente("copy")[1] == "gemma3:4b"
+    assert carregar(perfil_hardware="especializado").modelo_do_agente("dev_backend")[1] \
+        == "qwen3-coder:30b-a3b"
+
+
+def test_perfil_cpu_limita_o_tamanho_das_respostas():
+    from movili.core.orquestrador import Ecossistema
+
+    cfg = carregar(backend_forcado="simulado", perfil_hardware="cpu")
+    assert cfg.teto_tokens == 700
+    eco = Ecossistema(cfg, verboso=False, persistir=False, somente=["financeiro"])
+    assert eco.agente("financeiro").perfil.max_tokens == 700
+    # sem perfil, a ficha manda
+    eco = Ecossistema(carregar(backend_forcado="simulado"), verboso=False, persistir=False,
+                      somente=["financeiro"])
+    assert eco.agente("financeiro").perfil.max_tokens > 700
+
+
+def test_raciocinio_do_ollama_vem_desligado():
+    assert carregar().backends["ollama"].raciocinio is False
 
 
 def test_perfil_inexistente_da_erro_legivel():
